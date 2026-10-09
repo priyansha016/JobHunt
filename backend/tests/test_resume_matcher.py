@@ -98,7 +98,7 @@ Skills: Python, TypeScript, React, Docker, FastAPI, PostgreSQL, AWS, Microservic
         note = fill_template(tmpl, profile, user_config)
         self.assertEqual(
             note,
-            "Hi Jessica, I'm a Senior Full Stack Engineer specializing in Python and FastAPI at Figma. Let's connect!"
+            "Hi Jessica, I'm a Senior Full Stack Engineer specializing in Python and TypeScript at Figma. Let's connect!"
         )
         self.assertLessEqual(len(note), 300)
 

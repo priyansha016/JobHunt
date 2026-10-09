@@ -77,37 +77,57 @@ COMMON_SKILLS = [
 
 def extract_resume_profile(resume_text: str) -> Dict[str, Any]:
     """
-    Auto-extracts primary title and skills directly from resume text.
-    Handles engineering, bioinformatics, genomics, machine learning, and data science profiles.
+    Universally extracts primary title and skills directly from ANY resume text.
+    Generic across all tech, data, engineering, science, design, and management disciplines.
     """
     if not resume_text:
         return {
-            "primary_role": "Bioinformatics Engineer",
-            "skills": ["Python", "Machine Learning", "Bioinformatics", "Nextflow"]
+            "primary_role": "Software Professional",
+            "skills": ["Python", "Cloud", "System Architecture"]
         }
 
     resume_lower = resume_text.lower()
 
-    # 1. Detect role: First inspect headline lines with '·' (excluding skill category lines with ':')
+    # 1. Detect role: First inspect headline lines with delimiters (·, |, •) in first 25 lines
     detected_role = None
-    for line in resume_text.splitlines()[:30]:
+    for line in resume_text.splitlines()[:25]:
         line_clean = line.strip()
-        if "·" in line_clean and ":" not in line_clean and any(
-            k in line_clean.lower() for k in ["engineer", "scientist", "genomics", "developer", "biologist", "researcher"]
-        ):
-            parts = [p.strip() for p in line_clean.split("·") if p.strip()]
-            if parts:
-                detected_role = parts[0]
+        if not line_clean or ":" in line_clean:
+            continue
+        for delim in ["·", "|", "•", " - "]:
+            if delim in line_clean:
+                parts = [p.strip() for p in line_clean.split(delim) if p.strip()]
+                for p in parts:
+                    if any(k in p.lower() for k in [
+                        "engineer", "scientist", "developer", "biologist", "researcher",
+                        "manager", "lead", "architect", "analyst", "specialist", "designer"
+                    ]):
+                        detected_role = p
+                        break
+            if detected_role:
                 break
+        if detected_role:
+            break
 
-    # Next check summary statements like "... Engineer with X years of experience"
+    # Next check summary statements like "... Engineer / Scientist with X years of experience"
     if not detected_role:
         summary_match = re.search(
-            r"\b([A-Z][a-zA-Z\s]{3,35}(?:Engineer|Scientist|Biologist|Developer|Specialist))\s+with\s+\d+\s+years",
-            resume_text
+            r"\b([A-Z][a-zA-Z\s]{3,35}(?:Engineer|Scientist|Biologist|Developer|Specialist|Manager|Architect|Analyst|Consultant))\s+with\s+\d+\s+years",
+            resume_text, re.IGNORECASE
         )
         if summary_match:
             detected_role = summary_match.group(1).strip()
+
+    # Next check lines near the top that explicitly end in a professional title
+    if not detected_role:
+        for line in resume_text.splitlines()[:15]:
+            clean = line.strip()
+            if 4 <= len(clean) <= 45 and not clean.endswith(":") and not any(ch in clean for ch in ["@", "http", ".com"]):
+                if any(clean.lower().endswith(t) for t in [
+                    "engineer", "scientist", "developer", "manager", "lead", "architect", "analyst", "specialist", "designer", "researcher"
+                ]):
+                    detected_role = clean
+                    break
 
     # Next check ordered TECH_ROLES
     if not detected_role:
@@ -118,24 +138,51 @@ def extract_resume_profile(resume_text: str) -> Dict[str, Any]:
 
     detected_role = detected_role or "Software Engineer"
 
-    # 2. Detect skills using boundary matching and preserve appearance order
-    found_skills = []
+    # 2. Extract skills: First dynamically extract from explicit Skills/Technologies sections
+    dynamic_skills = []
+    section_match = re.search(
+        r'(?:skills|technologies|technical expertise|core competencies|tools|tech stack)\s*[:\n\-](.+?)(?=\n\s*\n|[A-Z][a-z]+:|\Z)',
+        resume_text, re.IGNORECASE | re.DOTALL
+    )
+    if section_match:
+        content = section_match.group(1).strip()
+        raw_items = re.split(r'[,|•·\n\t/]+', content)
+        for item in raw_items:
+            clean = re.sub(r'^[-\s\d.:]+|[:].*$', '', item).strip()
+            if clean and 2 <= len(clean) <= 32 and not any(stop in clean.lower() for stop in [
+                'experience', 'years', 'proficient', 'knowledge', 'strong', 'familiar', 'level'
+            ]):
+                if clean not in dynamic_skills:
+                    dynamic_skills.append(clean)
+
+    # 3. Detect known COMMON_SKILLS via boundary matching
+    found_known = []
     for skill in COMMON_SKILLS:
         pattern = r"(?<![a-zA-Z0-9])" + re.escape(skill.lower()) + r"(?![a-zA-Z0-9])"
         match = re.search(pattern, resume_lower)
         if match:
-            found_skills.append((match.start(), skill))
+            found_known.append((match.start(), skill))
 
-    # Sort skills by order of prominence in the resume
-    found_skills.sort(key=lambda x: x[0])
-    detected_skills = [s[1] for s in found_skills]
+    found_known.sort(key=lambda x: x[0])
+    detected_known = [s[1] for s in found_known]
 
-    if not detected_skills:
-        detected_skills = ["Python", "Machine Learning", "Data Engineering"]
+    # Combine dynamic skills and known skills, deduplicating while preserving order
+    combined_skills = []
+    seen_lower = set()
+
+    # Prioritize dynamic section skills first, then matched known skills
+    for s in dynamic_skills + detected_known:
+        low = s.lower()
+        if low not in seen_lower:
+            seen_lower.add(low)
+            combined_skills.append(s)
+
+    if not combined_skills:
+        combined_skills = ["Python", "System Architecture", "Cloud Services"]
 
     return {
         "primary_role": detected_role,
-        "skills": detected_skills
+        "skills": combined_skills
     }
 
 

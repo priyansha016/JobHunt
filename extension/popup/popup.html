@@ -24,79 +24,99 @@
       <button class="tab-btn" data-tab="history">📜 Sent Invites</button>
     </div>
 
-    <!-- Tab 1: Expand Network (Main Launchpad) -->
+    <!-- Tab 1: Expand Network (Guided 2-Step Workflow) -->
     <div class="tab-content active" id="tab-autopilot">
-      <!-- Active Job Profile Target -->
-      <div class="targeting-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <span style="font-size: 11px; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Active Job Profile</span>
-          <span class="persona-badge" id="detected-role" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #2563eb; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Bioinformatics Engineer</span>
+
+      <!-- STEP 1: Upload / Verify Resume Ground Truth -->
+      <div class="step-card">
+        <div class="step-header">
+          <span class="step-badge">STEP 1</span>
+          <span class="step-title">Upload Resume (Universal Ground Truth)</span>
         </div>
-        <div id="detected-skills" style="font-size: 11px; color: #94a3b8; line-height: 1.3;">
-          Python, Nextflow, PyTorch, Genomics, RNA-Seq, AWS
+        <div class="step-desc">
+          Your resume is the ground truth Laya uses to evaluate candidates, filter out spam, and generate authentic pitch notes. Works for any profession.
+        </div>
+
+        <div id="resume-container" class="resume-container">
+          <!-- Active Resume State -->
+          <div id="resume-active-view" class="resume-active-view" style="display: none;">
+            <div class="resume-file-bar">
+              <span class="resume-active-badge">✓ Active Profile</span>
+              <span class="resume-file-name" id="active-resume-filename">Resume Loaded</span>
+              <button id="change-resume-btn" class="mini-btn">🔄 Replace CV</button>
+            </div>
+            <div class="resume-meta-box">
+              <div class="meta-row">
+                <span class="meta-lbl">Target Role:</span>
+                <span class="persona-badge" id="detected-role">Software Engineer</span>
+              </div>
+              <div class="meta-row" style="margin-top: 6px;">
+                <span class="meta-lbl">Key Skills:</span>
+                <span class="skills-preview" id="detected-skills">Loading skills...</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dropzone Upload State -->
+          <div id="resume-dropzone-view" class="dropzone" style="display: none;">
+            <input type="file" id="resume-file-input" accept=".pdf" style="display: none;">
+            <div style="font-size: 24px; margin-bottom: 4px;">📄</div>
+            <div style="font-weight: 700; font-size: 12px; color: #60a5fa;">Drop CV / Resume (.pdf) here</div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">or click to browse from your computer</div>
+            <div style="font-size: 10px; color: #34d399; margin-top: 4px;">Universal: Bioinfo, Tech, ML, Management, etc.</div>
+          </div>
+          <div id="resume-upload-status" class="upload-status-msg"></div>
         </div>
       </div>
 
-      <!-- Growth Velocity & Today's Cap -->
-      <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
-        <div class="stat-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; text-align: center;">
-          <span class="stat-label" style="font-size: 10px; color: #9ca3af; text-transform: uppercase; display: block;">Today's Invites</span>
-          <span class="stat-value highlight" id="stat-sent-today" style="font-size: 18px; font-weight: 800; color: #34d399; margin-top: 2px; display: block;">0 / 15</span>
+      <!-- STEP 2: Target & Launch Auto-Pilot -->
+      <div class="step-card">
+        <div class="step-header">
+          <span class="step-badge">STEP 2</span>
+          <span class="step-title">Target &amp; Launch Auto-Pilot</span>
         </div>
-        <div class="stat-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; text-align: center;">
-          <span class="stat-label" style="font-size: 10px; color: #9ca3af; text-transform: uppercase; display: block;">Total Sent</span>
-          <span class="stat-value" id="stat-sent" style="font-size: 18px; font-weight: 800; color: #60a5fa; margin-top: 2px; display: block;">0</span>
-        </div>
-      </div>
 
-      <!-- Search Query Input -->
-      <div class="form-group" style="margin-bottom: 10px;">
-        <label class="form-label" style="font-size: 11px; font-weight: 600; color: #d1d5db; display: block; margin-bottom: 4px;">Target Keywords / Hiring Leads</label>
-        <input type="text" class="form-input" id="autopilot-query" value="Bioinformatics Recruiter" placeholder="e.g. Bioinformatics Recruiter, Genomics Hiring Manager">
-      </div>
-
-      <!-- Quick 1-Click Presets -->
-      <div style="margin-bottom: 12px;">
-        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; font-weight: 600;">Fast Presets:</div>
-        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-          <button class="autopilot-preset-btn" data-q="Bioinformatics Recruiter">🧬 Bio Recruiter</button>
-          <button class="autopilot-preset-btn" data-q="Computational Biology Manager">🔬 Comp Bio Manager</button>
-          <button class="autopilot-preset-btn" data-q="Genomics Scientist Illumina">🧪 Genomics Lead</button>
-          <button class="autopilot-preset-btn" data-q="Machine Learning Recruiter">🤖 ML Recruiter</button>
-          <button class="autopilot-preset-btn" data-q="Bioinformatics Hiring Manager">💼 Bio Director</button>
-        </div>
-      </div>
-
-      <!-- Autonomous Safety Shield -->
-      <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-        <div style="font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-          <span>🛡️ Laya Autonomous Network Shield</span>
-        </div>
-        <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
-          Autonomously triages recruiters &amp; technical leads using <strong>Laya System 1 Decisions</strong>. Applies 7–14s human jitter and custom pitches strictly &le;300 chars.
-        </div>
-      </div>
-
-      <!-- Primary Action Button -->
-      <button class="save-btn" id="launch-autopilot-btn" style="background: #2563eb; font-size: 13px; font-weight: 700; padding: 10px; width: 100%; border-radius: 6px; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
-        🚀 Launch Auto-Pilot on LinkedIn
-      </button>
-      <div id="autopilot-feedback" style="font-size: 11px; color: #34d399; margin-top: 6px; text-align: center;"></div>
-
-      <!-- Collapsible Resume Update Section (Neatly tucked away) -->
-      <div style="margin-top: 14px; border-top: 1px solid #374151; padding-top: 10px;">
-        <div id="toggle-resume-section" style="font-size: 11px; color: #60a5fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-          <span>📄 Update Resume CV (Optional)</span>
-          <span id="resume-toggle-arrow">▼</span>
-        </div>
-        <div id="resume-collapsible-body" style="display: none; margin-top: 8px;">
-          <div class="dropzone" id="resume-pdf-dropzone" style="border: 1px dashed #3b82f6; border-radius: 6px; padding: 12px; text-align: center; cursor: pointer; background: rgba(59, 130, 246, 0.05);">
-            <input type="file" id="resume-pdf-input" accept=".pdf" style="display: none;">
-            <div style="font-weight: 600; font-size: 11px; color: #60a5fa;">Drop new CV / Resume PDF here</div>
-            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Auto-extracts title &amp; domain skills</div>
-            <div id="resume-file-name" style="font-size: 10px; color: #34d399; margin-top: 4px;"></div>
+        <!-- Safe Velocity Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <span class="stat-label">Today's Invites</span>
+            <span class="stat-value highlight" id="stat-sent-today">0 / 15</span>
+            <span style="font-size: 9px; color: #9ca3af; margin-top: 1px;">Daily safe cap</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Total Outreached</span>
+            <span class="stat-value" id="stat-sent">0</span>
+            <span style="font-size: 9px; color: #9ca3af; margin-top: 1px;">Logged in DuckDB</span>
           </div>
         </div>
+
+        <!-- Target Search Query Input -->
+        <div class="form-group">
+          <label class="form-label">Search Query / Hiring Leads</label>
+          <input type="text" class="form-input" id="autopilot-query" placeholder="e.g. Bioinformatics Recruiter, Tech Lead">
+        </div>
+
+        <!-- Dynamic 1-Click Presets -->
+        <div style="margin-bottom: 12px;">
+          <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; font-weight: 600;">Fast 1-Click Presets (Tuned to your role):</div>
+          <div id="presets-container" style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <!-- Populated dynamically based on detected role -->
+          </div>
+        </div>
+
+        <!-- Laya System 1 Decision Shield -->
+        <div class="shield-notice">
+          <div class="shield-title">🛡️ Laya Autonomous Network Shield</div>
+          <div class="shield-desc">
+            Evaluates candidate cards against your Step 1 CV in real-time. Connects only with high-synergy contacts, skips spam/sales, applies 7–14s human jitter, and drafts custom notes &le;300 chars.
+          </div>
+        </div>
+
+        <!-- Primary Launch Button -->
+        <button class="launch-btn" id="launch-autopilot-btn">
+          🚀 Launch Auto-Pilot on LinkedIn
+        </button>
+        <div id="autopilot-feedback" class="feedback-msg"></div>
       </div>
     </div>
 
@@ -106,7 +126,7 @@
         <span style="font-size: 11px; color: #9ca3af;">Recent Connected Contacts</span>
         <button id="refresh-history-btn" style="background: transparent; border: none; color: #60a5fa; cursor: pointer; font-size: 11px;">🔄 Refresh</button>
       </div>
-      <div id="history-list-container" style="max-height: 380px; overflow-y: auto;">
+      <div id="history-list-container" style="max-height: 400px; overflow-y: auto;">
         <!-- Populated dynamically -->
       </div>
     </div>

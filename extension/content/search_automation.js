@@ -39,9 +39,24 @@ new MutationObserver(() => {
 }).observe(document, { subtree: true, childList: true });
 
 function initSearchAutopilot() {
-  if (document.getElementById("jobhunt-autopilot-hud")) return;
-  loadStoredDailyStats();
-  injectAutopilotHUD();
+  if (!document.getElementById("jobhunt-autopilot-hud")) {
+    loadStoredDailyStats();
+    injectAutopilotHUD();
+  }
+  checkAutoStart();
+}
+
+function checkAutoStart() {
+  if (window.location.search.includes("jobhunt_autostart=1")) {
+    const cleanUrl = window.location.href.replace(/([?&])jobhunt_autostart=1(&|$)/, (m, p1, p2) => p2 ? p1 : "");
+    window.history.replaceState({}, document.title, cleanUrl);
+    updateHUDStatus("running", "Auto-Starting", "🚀 Auto-Pilot initiated! Launching in 2.5 seconds...");
+    setTimeout(() => {
+      if (!autopilotState.isRunning) {
+        startAutopilot();
+      }
+    }, 2500);
+  }
 }
 
 function loadStoredDailyStats() {
@@ -545,12 +560,13 @@ function getCandidateCards() {
     ".search-results-container ul > li",
     ".scaffold-finite-scroll__content ul > li",
     "ul.reusable-search__entity-result-list > li",
-    "div.search-results-container li",
     "div[data-view-name*='entity-result']"
   ];
 
   for (const s of selectors) {
-    const list = Array.from(document.querySelectorAll(s));
+    const list = Array.from(document.querySelectorAll(s)).filter(card => {
+      return card.querySelector("a[href*='/in/']") !== null && card.offsetHeight > 40;
+    });
     if (list.length > 0) {
       return list;
     }
@@ -562,9 +578,13 @@ function getCandidateCards() {
   const fallbackCards = [];
 
   for (const link of profileLinks) {
+    // Avoid links in navigation, header, or HUD
+    if (link.closest("header") || link.closest("nav") || link.closest(".global-nav") || link.closest("#jobhunt-autopilot-hud")) {
+      continue;
+    }
     const card = link.closest("li") || link.closest("div.entity-result") || link.closest("div[data-view-name]") || link.parentElement?.parentElement?.parentElement;
     if (card && !seenCards.has(card)) {
-      if (!card.closest("header") && !card.closest("nav") && card.offsetHeight > 50) {
+      if (!card.closest("header") && !card.closest("nav") && card.offsetHeight > 40) {
         seenCards.add(card);
         fallbackCards.push(card);
       }
@@ -666,7 +686,8 @@ async function tryFindConnectInMoreMenu(card) {
     if (b.disabled) continue;
     const aria = (b.getAttribute("aria-label") || "").toLowerCase();
     const txt = (b.innerText || "").toLowerCase();
-    return aria.includes("more actions") || aria.includes("more options") || txt.includes("more");
+    const hasOverflowSvg = b.querySelector("svg[data-test-icon*='overflow']") !== null;
+    return aria.includes("more actions") || aria.includes("more options") || aria.includes("more") || txt.includes("more") || hasOverflowSvg;
   });
 
   if (!moreBtn) return null;

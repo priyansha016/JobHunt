@@ -6,8 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadConfig();
   loadMetrics();
   setupAutopilotLaunchpad();
-  setupResumePdfUpload();
-  setupResumeCollapsible();
+  setupResumeManagement();
   loadHistory();
 
   const refreshHistoryBtn = document.getElementById("refresh-history-btn");
@@ -29,13 +28,17 @@ function setupTabs() {
       if (targetContent) targetContent.classList.add("active");
 
       if (btn.dataset.tab === "history") loadHistory();
-      if (btn.dataset.tab === "autopilot") loadMetrics();
+      if (btn.dataset.tab === "autopilot") {
+        loadMetrics();
+        loadConfig();
+      }
     });
   });
 }
 
 async function checkBackendHealth() {
   const badge = document.getElementById("backend-status");
+  if (!badge) return;
   try {
     const res = await fetch(`${BACKEND_URL}/api/health`);
     if (res.ok) {
@@ -57,147 +60,158 @@ async function loadConfig() {
     if (!res.ok) return;
     const cfg = await res.json();
 
+    const activeView = document.getElementById("resume-active-view");
+    const dropzoneView = document.getElementById("resume-dropzone-view");
+    const filenameEl = document.getElementById("active-resume-filename");
     const roleEl = document.getElementById("detected-role");
     const skillsEl = document.getElementById("detected-skills");
+    const queryInput = document.getElementById("autopilot-query");
 
-    if (roleEl && cfg.detected_role) {
-      roleEl.innerText = cfg.detected_role;
+    const hasResume = cfg.has_resume || (cfg.resume_text && cfg.resume_text.trim().length > 0);
+    const role = cfg.detected_role || "Software Engineer";
+
+    if (hasResume) {
+      if (activeView) activeView.style.display = "block";
+      if (dropzoneView) dropzoneView.style.display = "none";
+      if (filenameEl) filenameEl.innerText = cfg.resume_filename || "Active Profile Resume (.pdf)";
+      if (roleEl) roleEl.innerText = role;
+      if (skillsEl && cfg.detected_skills && cfg.detected_skills.length > 0) {
+        skillsEl.innerText = cfg.detected_skills.slice(0, 8).join(", ");
+      }
+    } else {
+      if (activeView) activeView.style.display = "none";
+      if (dropzoneView) dropzoneView.style.display = "block";
     }
-    if (skillsEl && cfg.detected_skills && cfg.detected_skills.length > 0) {
-      skillsEl.innerText = cfg.detected_skills.slice(0, 10).join(", ");
+
+    // Set dynamic presets and default query based on detected role
+    renderPresets(role);
+    if (queryInput && (!queryInput.value || queryInput.value === "Bioinformatics Recruiter")) {
+      queryInput.value = `${role} Recruiter`;
     }
   } catch (e) {
     console.warn("Could not load config:", e);
   }
 }
 
-async function loadMetrics() {
-  // Read today's invites from localStorage
-  const todayKey = `jobhunt_autopilot_${new Date().toISOString().split("T")[0]}`;
-  let sentToday = 0;
-  try {
-    sentToday = parseInt(localStorage.getItem(todayKey) || "0", 10);
-  } catch (e) {}
-
-  const sentTodayEl = document.getElementById("stat-sent-today");
-  if (sentTodayEl) {
-    sentTodayEl.innerText = `${sentToday} / 15`;
-  }
-
-  // Read all-time metrics from backend
-  try {
-    const res = await fetch(`${BACKEND_URL}/api/stats`);
-    if (!res.ok) return;
-    const stats = await res.json();
-    const statSentEl = document.getElementById("stat-sent");
-    if (statSentEl) {
-      statSentEl.innerText = stats.notes_sent || 0;
-    }
-  } catch (e) {
-    console.warn("Could not load stats:", e);
-  }
-}
-
-function setupAutopilotLaunchpad() {
+function renderPresets(role) {
+  const container = document.getElementById("presets-container");
   const queryInput = document.getElementById("autopilot-query");
-  const launchBtn = document.getElementById("launch-autopilot-btn");
-  const feedbackEl = document.getElementById("autopilot-feedback");
-  const presetBtns = document.querySelectorAll(".autopilot-preset-btn");
+  if (!container) return;
 
-  if (!launchBtn) return;
+  const rLower = (role || "").toLowerCase();
+  let presets = [];
 
-  presetBtns.forEach(btn => {
+  if (rLower.includes("bio") || rLower.includes("genom") || rLower.includes("computational bio")) {
+    presets = [
+      { label: "🧬 Bio Recruiter", q: "Bioinformatics Recruiter" },
+      { label: "🔬 Comp Bio Lead", q: "Computational Biology Manager" },
+      { label: "🧪 Genomics Lead", q: "Genomics Scientist Illumina" },
+      { label: "🤖 ML Bio Lead", q: "Bioinformatics Machine Learning" },
+      { label: "💼 Bio Director", q: "Director Bioinformatics" }
+    ];
+  } else if (rLower.includes("machine learning") || rLower.includes("data scientist") || rLower.includes("ai ")) {
+    presets = [
+      { label: "🤖 ML Recruiter", q: "Machine Learning Recruiter" },
+      { label: "🧠 AI Manager", q: "AI Engineering Manager" },
+      { label: "📊 Data Lead", q: "Head of Data Science" },
+      { label: "💼 Tech Recruiter", q: "Technical Recruiter Machine Learning" },
+      { label: "🤝 Senior ML Peer", q: "Senior Machine Learning Engineer" }
+    ];
+  } else if (rLower.includes("software") || rLower.includes("full stack") || rLower.includes("backend") || rLower.includes("frontend")) {
+    presets = [
+      { label: "💼 Tech Recruiter", q: "Technical Recruiter" },
+      { label: "🚀 Eng Manager", q: "Engineering Manager" },
+      { label: "💻 Senior Dev", q: "Senior Software Engineer" },
+      { label: "🤝 Talent Partner", q: "Software Talent Partner" },
+      { label: "🎯 VP Eng", q: "VP of Engineering" }
+    ];
+  } else {
+    // Universal presets for any role
+    const cleanRole = role.split(/[\/|·,-]/)[0].trim() || "Professional";
+    presets = [
+      { label: `💼 ${cleanRole} Recruiter`, q: `${cleanRole} Recruiter` },
+      { label: `🚀 ${cleanRole} Manager`, q: `${cleanRole} Hiring Manager` },
+      { label: `🎯 ${cleanRole} Lead`, q: `${cleanRole} Team Lead` },
+      { label: `🤝 Senior ${cleanRole}`, q: `Senior ${cleanRole}` },
+      { label: `🏢 Head of ${cleanRole}`, q: `Head of ${cleanRole}` }
+    ];
+  }
+
+  container.innerHTML = "";
+  presets.forEach(p => {
+    const btn = document.createElement("button");
+    btn.className = "autopilot-preset-btn";
+    btn.innerText = p.label;
+    btn.dataset.q = p.q;
     btn.addEventListener("click", () => {
-      const q = btn.dataset.q;
-      if (q && queryInput) {
-        queryInput.value = q;
+      if (queryInput) {
+        queryInput.value = p.q;
         btn.style.borderColor = "#3b82f6";
         setTimeout(() => {
           btn.style.borderColor = "#374151";
         }, 300);
       }
     });
+    container.appendChild(btn);
   });
+}
 
-  launchBtn.addEventListener("click", () => {
-    const query = queryInput ? queryInput.value.trim() : "";
-    if (!query) {
-      if (feedbackEl) {
-        feedbackEl.style.color = "#f87171";
-        feedbackEl.innerText = "Please enter search keywords or click a preset.";
+function setupResumeManagement() {
+  const activeView = document.getElementById("resume-active-view");
+  const dropzoneView = document.getElementById("resume-dropzone-view");
+  const changeBtn = document.getElementById("change-resume-btn");
+  const fileInput = document.getElementById("resume-file-input");
+  const statusEl = document.getElementById("resume-upload-status");
+
+  if (changeBtn && fileInput) {
+    changeBtn.addEventListener("click", () => {
+      fileInput.click();
+    });
+  }
+
+  if (dropzoneView && fileInput) {
+    dropzoneView.addEventListener("click", () => {
+      fileInput.click();
+    });
+
+    dropzoneView.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropzoneView.style.borderColor = "#3b82f6";
+    });
+
+    dropzoneView.addEventListener("dragleave", () => {
+      dropzoneView.style.borderColor = "#4b5563";
+    });
+
+    dropzoneView.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropzoneView.style.borderColor = "#4b5563";
+      if (e.dataTransfer.files.length > 0) {
+        uploadResumeFile(e.dataTransfer.files[0]);
+      }
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener("change", () => {
+      if (fileInput.files.length > 0) {
+        uploadResumeFile(fileInput.files[0]);
+      }
+    });
+  }
+
+  async function uploadResumeFile(file) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      if (statusEl) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerText = "Please upload a valid PDF file (.pdf)";
       }
       return;
     }
 
-    const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}&origin=SWITCH_SEARCH_VERTICAL`;
-
-    if (feedbackEl) {
-      feedbackEl.style.color = "#34d399";
-      feedbackEl.innerText = "Opening LinkedIn search with Auto-Pilot HUD...";
-    }
-
-    if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
-      chrome.tabs.create({ url: searchUrl });
-    } else {
-      window.open(searchUrl, "_blank");
-    }
-  });
-}
-
-function setupResumeCollapsible() {
-  const toggleBtn = document.getElementById("toggle-resume-section");
-  const body = document.getElementById("resume-collapsible-body");
-  const arrow = document.getElementById("resume-toggle-arrow");
-
-  if (toggleBtn && body) {
-    toggleBtn.addEventListener("click", () => {
-      const isOpen = body.style.display !== "none";
-      body.style.display = isOpen ? "none" : "block";
-      if (arrow) arrow.innerText = isOpen ? "▼" : "▲";
-    });
-  }
-}
-
-function setupResumePdfUpload() {
-  const dropzone = document.getElementById("resume-pdf-dropzone");
-  const input = document.getElementById("resume-pdf-input");
-  const fileNameEl = document.getElementById("resume-file-name");
-
-  if (!dropzone || !input) return;
-
-  dropzone.addEventListener("click", () => input.click());
-
-  dropzone.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    dropzone.style.borderColor = "#3b82f6";
-  });
-
-  dropzone.addEventListener("dragleave", () => {
-    dropzone.style.borderColor = "#3b82f6";
-  });
-
-  dropzone.addEventListener("drop", (e) => {
-    e.preventDefault();
-    if (e.dataTransfer.files.length > 0) {
-      handleResumeFileUpload(e.dataTransfer.files[0]);
-    }
-  });
-
-  input.addEventListener("change", () => {
-    if (input.files.length > 0) {
-      handleResumeFileUpload(input.files[0]);
-    }
-  });
-
-  async function handleResumeFileUpload(file) {
-    if (!file.name.toLowerCase().endsWith(".pdf")) {
-      alert("Please upload a PDF file.");
-      return;
-    }
-
-    if (fileNameEl) {
-      fileNameEl.style.color = "#60a5fa";
-      fileNameEl.innerText = `Extracting skills with Laya from ${file.name}...`;
+    if (statusEl) {
+      statusEl.style.color = "#60a5fa";
+      statusEl.innerText = `Extracting skills with Laya from ${file.name}...`;
     }
 
     const formData = new FormData();
@@ -215,22 +229,95 @@ function setupResumePdfUpload() {
       }
 
       const data = await res.json();
-      if (fileNameEl) {
-        fileNameEl.style.color = "#34d399";
-        fileNameEl.innerText = `✓ Loaded: ${data.detected_role || "Bioinformatics Engineer"}`;
+      if (statusEl) {
+        statusEl.style.color = "#34d399";
+        statusEl.innerText = `✓ Profile loaded: ${data.detected_role || "Updated"}`;
       }
 
+      // Switch views to active state
+      if (activeView) activeView.style.display = "block";
+      if (dropzoneView) dropzoneView.style.display = "none";
+
+      const filenameEl = document.getElementById("active-resume-filename");
       const roleEl = document.getElementById("detected-role");
       const skillsEl = document.getElementById("detected-skills");
+      const queryInput = document.getElementById("autopilot-query");
+
+      if (filenameEl) filenameEl.innerText = file.name;
       if (roleEl && data.detected_role) roleEl.innerText = data.detected_role;
-      if (skillsEl && data.detected_skills) skillsEl.innerText = data.detected_skills.slice(0, 10).join(", ");
+      if (skillsEl && data.detected_skills) skillsEl.innerText = data.detected_skills.slice(0, 8).join(", ");
+
+      // Re-tune presets & target query for the newly extracted role
+      if (data.detected_role) {
+        renderPresets(data.detected_role);
+        if (queryInput) queryInput.value = `${data.detected_role} Recruiter`;
+      }
     } catch (err) {
-      if (fileNameEl) {
-        fileNameEl.style.color = "#f87171";
-        fileNameEl.innerText = `Error: ${err.message}`;
+      if (statusEl) {
+        statusEl.style.color = "#f87171";
+        statusEl.innerText = `Error: ${err.message}`;
       }
     }
   }
+}
+
+async function loadMetrics() {
+  // Read today's invites from localStorage
+  const todayKey = `jobhunt_autopilot_${new Date().toISOString().split("T")[0]}`;
+  let sentToday = 0;
+  try {
+    sentToday = parseInt(localStorage.getItem(todayKey) || "0", 10);
+  } catch (e) {}
+
+  const sentTodayEl = document.getElementById("stat-sent-today");
+  if (sentTodayEl) {
+    sentTodayEl.innerText = `${sentToday} / 15`;
+  }
+
+  // Read all-time metrics from DuckDB backend
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/stats`);
+    if (!res.ok) return;
+    const stats = await res.json();
+    const statSentEl = document.getElementById("stat-sent");
+    if (statSentEl) {
+      statSentEl.innerText = stats.notes_sent || 0;
+    }
+  } catch (e) {
+    console.warn("Could not load stats:", e);
+  }
+}
+
+function setupAutopilotLaunchpad() {
+  const queryInput = document.getElementById("autopilot-query");
+  const launchBtn = document.getElementById("launch-autopilot-btn");
+  const feedbackEl = document.getElementById("autopilot-feedback");
+
+  if (!launchBtn) return;
+
+  launchBtn.addEventListener("click", () => {
+    const query = queryInput ? queryInput.value.trim() : "";
+    if (!query) {
+      if (feedbackEl) {
+        feedbackEl.style.color = "#f87171";
+        feedbackEl.innerText = "Please enter search keywords or click a preset.";
+      }
+      return;
+    }
+
+    const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}&origin=SWITCH_SEARCH_VERTICAL&jobhunt_autostart=1`;
+
+    if (feedbackEl) {
+      feedbackEl.style.color = "#34d399";
+      feedbackEl.innerText = "🚀 Opening LinkedIn Search with Auto-Pilot enabled...";
+    }
+
+    if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
+      chrome.tabs.create({ url: searchUrl });
+    } else {
+      window.open(searchUrl, "_blank");
+    }
+  });
 }
 
 async function loadHistory() {
@@ -243,7 +330,7 @@ async function loadHistory() {
     const profiles = await res.json();
 
     if (profiles.length === 0) {
-      container.innerHTML = `<div style="font-size: 11px; color: #9ca3af; text-align: center; padding: 20px 0;">No contacts reached out to yet. Start Auto-Pilot above!</div>`;
+      container.innerHTML = `<div style="font-size: 11px; color: #9ca3af; text-align: center; padding: 24px 0;">No contacts reached out to yet. Start Auto-Pilot above!</div>`;
       return;
     }
 

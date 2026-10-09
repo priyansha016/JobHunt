@@ -109,16 +109,18 @@ def get_config():
         info = extract_resume_profile(resume_text)
         config["detected_role"] = info.get("primary_role")
         config["detected_skills"] = info.get("skills", [])
+        config["has_resume"] = True
     else:
-        config["detected_role"] = "Bioinformatics Engineer"
+        config["detected_role"] = "Software Engineer"
         config["detected_skills"] = []
+        config["has_resume"] = False
     return config
 
 
 @app.post("/api/config")
 def update_config(payload: UserConfigUpdate):
     skills_to_save = payload.skills
-    detected_role = "Bioinformatics Engineer"
+    detected_role = "Software Engineer"
     detected_skills = []
     if payload.resume_text:
         info = extract_resume_profile(payload.resume_text)
@@ -136,6 +138,7 @@ def update_config(payload: UserConfigUpdate):
     )
     updated["detected_role"] = detected_role
     updated["detected_skills"] = detected_skills
+    updated["has_resume"] = bool(payload.resume_text)
     return updated
 
 
@@ -156,7 +159,8 @@ async def upload_resume_pdf(file: UploadFile = File(...)):
     parsed_info = extract_resume_profile(extracted_text)
     updated_config = db.update_user_config(
         resume_text=extracted_text,
-        skills=parsed_info.get("skills", [])
+        skills=parsed_info.get("skills", []),
+        resume_filename=file.filename
     )
 
     return {

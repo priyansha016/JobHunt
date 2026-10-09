@@ -325,4 +325,188 @@ body {
   border-color: #2563eb;
 }
 
+/* Step Card Architecture */
+.step-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.step-badge {
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.step-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.step-desc {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+.resume-container {
+  margin-top: 4px;
+}
+
+.resume-active-view {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.resume-file-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  gap: 6px;
+}
+
+.resume-active-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.resume-file-name {
+  font-size: 11px;
+  color: #cbd5e1;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.mini-btn {
+  background: #334155;
+  border: 1px solid #475569;
+  color: #93c5fd;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mini-btn:hover {
+  background: #475569;
+  color: #ffffff;
+}
+
+.resume-meta-box {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 4px;
+  padding: 6px 8px;
+  border: 1px solid #1e293b;
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.meta-lbl {
+  color: #94a3b8;
+  font-weight: 600;
+  min-width: 70px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.skills-preview {
+  color: #cbd5e1;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.upload-status-msg {
+  font-size: 11px;
+  margin-top: 6px;
+  text-align: center;
+  font-weight: 600;
+}
+
+.shield-notice {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.shield-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #34d399;
+  margin-bottom: 4px;
+}
+
+.shield-desc {
+  font-size: 10.5px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+.launch-btn {
+  background: #2563eb;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 11px;
+  width: 100%;
+  border-radius: 6px;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+.launch-btn:hover {
+  background: #1d4ed8;
+}
+
+.feedback-msg {
+  font-size: 11px;
+  color: #34d399;
+  margin-top: 6px;
+  text-align: center;
+}
+
 

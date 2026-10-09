@@ -36,9 +36,11 @@ class Database:
                     target_companies TEXT,    -- JSON list
                     skills TEXT,              -- JSON list
                     cleanup_blacklist TEXT,   -- JSON list
+                    resume_filename VARCHAR DEFAULT '',
                     updated_at TIMESTAMP
                 );
             """)
+            con.execute("ALTER TABLE user_config ADD COLUMN IF NOT EXISTS resume_filename VARCHAR DEFAULT '';")
 
             con.execute("""
                 CREATE TABLE IF NOT EXISTS evaluated_profiles (
@@ -125,7 +127,7 @@ class Database:
     def get_user_config(self) -> Dict[str, Any]:
         with self._get_connection() as con:
             row = con.execute("""
-                SELECT resume_text, target_titles, target_companies, skills, cleanup_blacklist, updated_at
+                SELECT resume_text, target_titles, target_companies, skills, cleanup_blacklist, resume_filename, updated_at
                 FROM user_config WHERE id = 'default'
             """).fetchone()
 
@@ -136,6 +138,7 @@ class Database:
                     "target_companies": [],
                     "skills": [],
                     "cleanup_blacklist": [],
+                    "resume_filename": "",
                     "updated_at": datetime.now().isoformat()
                 }
 
@@ -145,14 +148,16 @@ class Database:
                 "target_companies": json.loads(row[2]) if row[2] else [],
                 "skills": json.loads(row[3]) if row[3] else [],
                 "cleanup_blacklist": json.loads(row[4]) if row[4] else [],
-                "updated_at": row[5].isoformat() if row[5] else datetime.now().isoformat()
+                "resume_filename": row[5] or "",
+                "updated_at": row[6].isoformat() if row[6] else datetime.now().isoformat()
             }
 
     def update_user_config(self, resume_text: Optional[str] = None,
                            target_titles: Optional[List[str]] = None,
                            target_companies: Optional[List[str]] = None,
                            skills: Optional[List[str]] = None,
-                           cleanup_blacklist: Optional[List[str]] = None) -> Dict[str, Any]:
+                           cleanup_blacklist: Optional[List[str]] = None,
+                           resume_filename: Optional[str] = None) -> Dict[str, Any]:
         current = self.get_user_config()
         if resume_text is not None:
             current["resume_text"] = resume_text
@@ -164,17 +169,20 @@ class Database:
             current["skills"] = skills
         if cleanup_blacklist is not None:
             current["cleanup_blacklist"] = cleanup_blacklist
+        if resume_filename is not None:
+            current["resume_filename"] = resume_filename
 
         with self._get_connection() as con:
             con.execute("""
-                INSERT OR REPLACE INTO user_config (id, resume_text, target_titles, target_companies, skills, cleanup_blacklist, updated_at)
-                VALUES ('default', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
+                INSERT OR REPLACE INTO user_config (id, resume_text, target_titles, target_companies, skills, cleanup_blacklist, resume_filename, updated_at)
+                VALUES ('default', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP);
             """, [
                 current["resume_text"],
                 json.dumps(current["target_titles"]),
                 json.dumps(current["target_companies"]),
                 json.dumps(current["skills"]),
-                json.dumps(current["cleanup_blacklist"])
+                json.dumps(current["cleanup_blacklist"]),
+                current.get("resume_filename", "")
             ])
 
         return self.get_user_config()
