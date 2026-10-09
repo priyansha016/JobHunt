@@ -82,35 +82,47 @@ def generate_connection_note(
     profile: Dict[str, Any],
     persona: str,
     user_config: Dict[str, Any],
-    template_text: Optional[str] = None
+    template_text: Optional[str] = None,
+    outreach_angle: Optional[str] = None
 ) -> str:
     """
     Generates a personalized connection request note from a chosen template or persona default.
+    Leverages Laya's decided outreach_angle when available.
     """
     if template_text:
         return fill_template(template_text, profile, user_config)
 
-    # Built-in defaults per persona if no custom template provided
-    default_templates = {
-        "Recruiter / Talent Partner": (
-            "Hi {first_name}, noticed you lead tech hiring at {company}. "
-            "I'm a {my_role} specializing in {top_skill}. "
-            "Would love to connect and keep in touch for upcoming opportunities on your radar!"
+    # Built-in defaults per outreach angle or persona
+    angle_templates = {
+        "recruiter_inquiry": (
+            "Hi {first_name}, noticed your talent updates for {company}. "
+            "I'm a {my_role} specializing in {top_skill} & {second_skill}. "
+            "Would love to connect and stay in touch regarding engineering opportunities on your radar!"
         ),
-        "Hiring Manager / Tech Lead": (
+        "manager_pitch": (
             "Hi {first_name}, saw your engineering leadership at {company}. "
-            "I'm a {my_role} focused on {top_skill}. "
-            "Really admire your team's work and would value connecting with you here!"
+            "I'm a {my_role} focused on {top_skill} and scalable pipelines. "
+            "Admire your team's work and would value connecting with you here!"
         ),
-        "Peer / Potential Referral": (
+        "peer_networking": (
             "Hi {first_name}, always great connecting with fellow engineers at {company}! "
-            "I work across {top_skill} and would love to connect, follow your work, and exchange ideas."
-        ),
-        "Other / General": (
-            "Hi {first_name}, came across your profile at {company}. "
-            "As a {my_role}, I'd love to connect and expand our professional network here on LinkedIn!"
+            "I work across {top_skill} and would love to connect, follow your updates, and exchange ideas."
         )
     }
 
-    chosen = default_templates.get(persona, default_templates["Other / General"])
+    if outreach_angle and outreach_angle in angle_templates:
+        chosen = angle_templates[outreach_angle]
+    else:
+        default_templates = {
+            "Recruiter / Talent Partner": angle_templates["recruiter_inquiry"],
+            "Hiring Manager / Tech Lead": angle_templates["manager_pitch"],
+            "Peer / Potential Referral": angle_templates["peer_networking"],
+            "Other / General": (
+                "Hi {first_name}, came across your profile at {company}. "
+                "As a {my_role}, I'd love to connect and expand our professional network here on LinkedIn!"
+            )
+        }
+        chosen = default_templates.get(persona, default_templates["Other / General"])
+
     return fill_template(chosen, profile, user_config)
+

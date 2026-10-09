@@ -570,6 +570,39 @@ function setupDirectMatcher() {
     const headlineText = (profile.headline || "") + (profile.current_company ? ` at ${profile.current_company}` : "");
     document.getElementById("matcher-res-headline").innerText = headlineText || "No headline provided";
 
+    const decisionEl = document.getElementById("matcher-res-decision");
+    if (decisionEl) {
+      const act = evaluation.action_decision || "CONNECT_PEER";
+      const isSpam = evaluation.is_spam || false;
+      if (act === "CONNECT_HIGH_PRIORITY") {
+        decisionEl.innerText = "🎯 MUST CONNECT (Target)";
+        decisionEl.style.color = "#34d399";
+      } else if (act === "CONNECT_PEER") {
+        decisionEl.innerText = "💡 CONNECT (Domain Peer)";
+        decisionEl.style.color = "#60a5fa";
+      } else {
+        decisionEl.innerText = isSpam ? "⚠️ SKIP (Spam/Solicitation)" : "⏭️ SKIP (Mismatch)";
+        decisionEl.style.color = "#f87171";
+      }
+    }
+
+    const stratEl = document.getElementById("matcher-res-strategy");
+    if (stratEl) {
+      const angle = evaluation.outreach_angle || "peer_networking";
+      const names = {
+        recruiter_inquiry: "Talent Recruiter Inbound",
+        manager_pitch: "Technical Leadership Synergy",
+        peer_networking: "Technical Peer Exchange"
+      };
+      stratEl.innerText = names[angle] || angle;
+    }
+
+    const confEl = document.getElementById("matcher-res-confidence");
+    if (confEl) {
+      const conf = Math.round((evaluation.confidence || 0.85) * 100);
+      confEl.innerText = `${conf}% calibrated`;
+    }
+
     const note = data.suggested_note || "";
     noteTextarea.value = note;
     charCountEl.innerText = `${note.length} / 300`;

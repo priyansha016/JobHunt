@@ -177,8 +177,13 @@ class LayaEngine:
     def evaluate_profile(self, profile: Dict[str, Any], user_config: Any) -> Dict[str, Any]:
         """
         Directly compares candidate's Resume against LinkedIn profile.
-        Uses Laya for System 1 Persona, Relevance, and Fit Level.
-        user_config can be a Dict containing 'resume_text' or the raw resume text string.
+        Uses Laya System 1 Decision Engine for:
+        - action_decision: CONNECT_HIGH_PRIORITY, CONNECT_PEER, SKIP
+        - persona: Recruiter, Hiring Manager, Tech Peer, Other
+        - outreach_angle: recruiter_inquiry, manager_pitch, peer_networking
+        - career_synergy / match_score: calibrated 0-100%
+        - is_spam: account safety and spam detection
+        - confidence: calibrated model confidence
         """
         if isinstance(user_config, str):
             resume_text = user_config.strip()
@@ -194,53 +199,108 @@ class LayaEngine:
         profile_name = profile.get("name", "LinkedIn Member")
         profile_summary = f"{profile_name} - {headline} at {company}. {about[:300]}"
 
-        # Base persona from text clues
+        # Baseline defaults
         persona = self.classify_persona(headline, about, company)
-        match_score = 65.0
+        action_decision = "CONNECT_PEER"
+        outreach_angle = "peer_networking"
+        if persona == "Recruiter / Talent Partner":
+            action_decision = "CONNECT_HIGH_PRIORITY"
+            outreach_angle = "recruiter_inquiry"
+        elif persona == "Hiring Manager / Tech Lead":
+            action_decision = "CONNECT_HIGH_PRIORITY"
+            outreach_angle = "manager_pitch"
+
+        career_synergy = 2.4
+        is_spam = False
+        confidence = 0.85
         rationale = []
 
-        # 1. Run Laya System 1 Inference
+        # 1. Run Laya System 1 Typed Decisions
         agent = self.get_agent()
         if agent is not None:
             try:
                 questions = {
+                    "action_decision": {
+                        "type": "choice",
+                        "instructions": "What automation action should be taken for target_profile given candidate_resume?",
+                        "criteria": {
+                            "connect_high_priority": "target hiring manager, director, or specialized tech recruiter in candidate field",
+                            "connect_peer": "relevant engineer, scientist, or researcher in technical domain",
+                            "skip_mismatch_or_spam": "unrelated profession, crypto/forex promoter, spam, coach, or no synergy"
+                        }
+                    },
                     "persona": {
                         "type": "choice",
-                        "instructions": "What is the primary professional persona of this LinkedIn profile?",
-                        "criteria": ["recruiter", "engineering_manager", "software_peer", "unrelated"]
+                        "instructions": "What is the primary professional persona of target_profile?",
+                        "criteria": {
+                            "recruiter": "technical recruiter, talent acquisition, headhunter, or staffing specialist",
+                            "hiring_manager": "engineering manager, director, head of department, or team lead",
+                            "tech_peer": "engineer, scientist, developer, researcher, or computational peer",
+                            "unrelated": "sales, coach, marketer, crypto/forex promoter, or unrelated field"
+                        }
                     },
-                    "is_relevant": {
-                        "type": "noul",
-                        "instructions": "Is this LinkedIn profile relevant to connect with given the candidate's resume?"
+                    "outreach_angle": {
+                        "type": "choice",
+                        "instructions": "What is the most effective outreach angle for this profile?",
+                        "criteria": {
+                            "recruiter_inquiry": "inquire about active open roles and hiring on their teams",
+                            "manager_pitch": "highlight technical synergy, domain expertise, and project impact",
+                            "peer_networking": "connect as a technical peer to exchange insights and discuss common tools"
+                        }
                     },
-                    "match_level": {
+                    "career_synergy": {
                         "type": "score",
-                        "instructions": "Rate the career relevance between this profile and candidate resume.",
-                        "criteria": ["irrelevant", "low", "medium", "high", "top_tier"]
+                        "instructions": "Rate the career synergy between target_profile and candidate_resume.",
+                        "criteria": [
+                            "none: completely unrelated profession or spam",
+                            "low: distant field or minimal overlap",
+                            "medium: relevant technical or biological domain peer",
+                            "high: strong domain overlap or technical leadership",
+                            "exceptional: direct hiring decision maker or perfect recruiter match"
+                        ]
+                    },
+                    "is_spam_or_solicitation": {
+                        "type": "noul",
+                        "instructions": "Does target_profile represent spam, financial coaching, or unsolicited sales promotion?"
                     }
                 }
 
-                state = f"Candidate Resume:\n{resume_text[:1200] or 'Software Engineer with experience in Python and cloud systems.'}\n\nLinkedIn Profile:\n{profile_summary}"
+                state = f"Candidate Resume:\n{resume_text[:1200] or 'Bioinformatics Engineer with Python, Nextflow, and Machine Learning.'}\n\nTarget LinkedIn Profile:\n{profile_summary}"
                 prediction = agent.predict(state, questions)
                 answers = prediction.get("answers", {})
 
-                # Map Persona
-                raw_persona = answers.get("persona", {}).get("choice", "software_peer")
+                # Action Decision
+                raw_act = answers.get("action_decision", {}).get("choice", "connect_peer")
+                if raw_act == "connect_high_priority":
+                    action_decision = "CONNECT_HIGH_PRIORITY"
+                elif raw_act == "connect_peer":
+                    action_decision = "CONNECT_PEER"
+                else:
+                    action_decision = "SKIP"
+
+                # Persona
+                raw_persona = answers.get("persona", {}).get("choice", "tech_peer")
                 if raw_persona == "recruiter":
                     persona = "Recruiter / Talent Partner"
-                elif raw_persona == "engineering_manager":
+                elif raw_persona == "hiring_manager":
                     persona = "Hiring Manager / Tech Lead"
-                elif raw_persona == "software_peer":
+                elif raw_persona == "tech_peer":
                     persona = "Peer / Potential Referral"
                 else:
                     persona = "Other / General"
 
-                # Calculate Score from Laya match_level & relevance
-                score_val = float(answers.get("match_level", {}).get("score", 2.0)) # 0 to 4
-                is_rel_prob = float(answers.get("is_relevant", {}).get("noul", 0.5)) # 0.0 to 1.0
+                # Outreach Angle
+                outreach_angle = answers.get("outreach_angle", {}).get("choice", "peer_networking")
 
-                # Scale to 0-100: baseline + score_val * 15 + is_rel_prob * 20
-                match_score = round(min(98.0, max(20.0, 25.0 + (score_val * 12.0) + (is_rel_prob * 25.0))), 1)
+                # Career Synergy & Spam probability
+                career_synergy = float(answers.get("career_synergy", {}).get("score", 2.2))
+                is_spam_prob = float(answers.get("is_spam_or_solicitation", {}).get("noul", 0.1))
+                confidence = float(answers.get("action_decision", {}).get("answer_confidence", 0.85))
+
+                if is_spam_prob > 0.5:
+                    is_spam = True
+                    action_decision = "SKIP"
+                    rationale.append(f"Flagged by Laya: High solicitation/spam probability ({round(is_spam_prob*100)}%)")
 
             except Exception as e:
                 print(f"[LayaEngine] Model inference note: {e}")
@@ -265,9 +325,23 @@ class LayaEngine:
         else:
             rationale.append(f"Relevant tech peer in {resume_info['primary_role']}")
 
+        # 3. Calculate Calibrated Match Score (0 - 100)
+        base_calc = 32.0 + (career_synergy * 15.5)
+        if shared_skills:
+            base_calc += min(12.0, len(shared_skills) * 4.0)
+        if is_spam:
+            base_calc = max(10.0, base_calc - 45.0)
+
+        match_score = round(min(99.0, max(15.0, base_calc)), 1)
+
         return {
             "persona": persona,
             "match_score": match_score,
+            "action_decision": action_decision,
+            "outreach_angle": outreach_angle,
+            "career_synergy": round(career_synergy, 2),
+            "is_spam": is_spam,
+            "confidence": round(confidence, 3),
             "rationale": rationale,
             "detected_role": resume_info["primary_role"],
             "detected_skills": resume_info["skills"]
@@ -275,23 +349,66 @@ class LayaEngine:
 
     def evaluate_cleanup_candidate(self, connection: Dict[str, Any], user_config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluates an existing connection for cleanup / unfollow.
+        Evaluates an existing connection for cleanup / unfollow using Laya System 1 Decisions + Blacklist.
         """
-        headline = (connection.get("headline") or "").lower()
+        headline = (connection.get("headline") or "").strip()
+        headline_lower = headline.lower()
         name = connection.get("name") or "Unknown"
         blacklist = [b.lower() for b in (user_config.get("cleanup_blacklist") or [])]
+        resume_text = (user_config.get("resume_text") or "").strip()
+        resume_info = extract_resume_profile(resume_text)
 
         flag_reason = None
         action = "KEEP"
+        confidence = 0.88
 
-        # Check blacklist
+        # 1. Fast User Blacklist Check
         for bad_word in blacklist:
-            if bad_word and bad_word in headline:
+            if bad_word and bad_word in headline_lower:
                 flag_reason = f"Matches blacklist keyword: '{bad_word}'"
                 action = "UNFOLLOW"
                 break
 
-        # Check common spammy or irrelevant patterns
+        # 2. Laya System 1 Cleanup Decision
+        if not flag_reason:
+            agent = self.get_agent()
+            if agent is not None and headline:
+                try:
+                    cleanup_questions = {
+                        "cleanup_action": {
+                            "type": "choice",
+                            "instructions": "Given the user career in tech, what cleanup action should be taken for this connection?",
+                            "criteria": {
+                                "keep": "valuable tech connection, industry peer, engineer, scientist, or recruiter",
+                                "unfollow": "harmless but noisy connection clogging the feed with off-topic sales, real estate, coaching, or MLM",
+                                "remove_disconnect": "blatant spam, crypto/forex promoter, fake account, or aggressive sales pitch"
+                            }
+                        },
+                        "is_spam_or_solicitation": {
+                            "type": "noul",
+                            "instructions": "Does this connection represent spam, speculative finance, or aggressive solicitation?"
+                        }
+                    }
+                    state = f"User Career:\n{resume_info['primary_role']} with skills {', '.join(resume_info['skills'][:5])}\n\nExisting LinkedIn Connection:\n{name} - {headline}"
+                    pred = agent.predict(state, cleanup_questions)
+                    answers = pred.get("answers", {})
+
+                    cleanup_choice = answers.get("cleanup_action", {}).get("choice", "keep")
+                    is_spam_prob = float(answers.get("is_spam_or_solicitation", {}).get("noul", 0.0))
+                    confidence = float(answers.get("cleanup_action", {}).get("answer_confidence", 0.8))
+
+                    if is_spam_prob > 0.5 or cleanup_choice == "remove_disconnect":
+                        action = "REMOVE"
+                        flag_reason = f"Laya Decision: Spam or solicitation detected ({round(is_spam_prob*100)}% risk)"
+                    elif cleanup_choice == "unfollow":
+                        action = "UNFOLLOW"
+                        flag_reason = "Laya Decision: Off-topic feed noise / non-aligned connection"
+                    else:
+                        action = "KEEP"
+                except Exception as e:
+                    print(f"[LayaEngine] Cleanup evaluation note: {e}")
+
+        # 3. Fallback Heuristic Pattern Check
         if not flag_reason:
             spam_triggers = [
                 ("crypto", "Crypto / Web3 speculative promoter"),
@@ -303,7 +420,7 @@ class LayaEngine:
                 ("financial advisor", "Financial sales advisor")
             ]
             for kw, reason in spam_triggers:
-                if kw in headline:
+                if kw in headline_lower:
                     flag_reason = reason
                     action = "UNFOLLOW"
                     break
@@ -314,7 +431,8 @@ class LayaEngine:
             "headline": connection.get("headline", ""),
             "action": action,
             "flag_reason": flag_reason,
-            "is_flagged": action != "KEEP"
+            "is_flagged": action != "KEEP",
+            "confidence": round(confidence, 3)
         }
 
 

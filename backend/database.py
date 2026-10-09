@@ -54,10 +54,24 @@ class Database:
                     rationale TEXT,          -- JSON list
                     suggested_note VARCHAR,
                     note_status VARCHAR DEFAULT 'draft',
+                    action_decision VARCHAR DEFAULT 'CONNECT_PEER',
+                    outreach_angle VARCHAR DEFAULT 'peer_networking',
+                    confidence DOUBLE DEFAULT 0.85,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 );
             """)
+
+            # Ensure columns exist if table was created previously
+            for col_name, col_type in [
+                ("action_decision", "VARCHAR DEFAULT 'CONNECT_PEER'"),
+                ("outreach_angle", "VARCHAR DEFAULT 'peer_networking'"),
+                ("confidence", "DOUBLE DEFAULT 0.85")
+            ]:
+                try:
+                    con.execute(f"ALTER TABLE evaluated_profiles ADD COLUMN IF NOT EXISTS {col_name} {col_type};")
+                except Exception:
+                    pass
 
             con.execute("""
                 CREATE TABLE IF NOT EXISTS cleanup_records (
@@ -172,8 +186,9 @@ class Database:
                 INSERT OR REPLACE INTO evaluated_profiles (
                     profile_id, linkedin_url, name, headline, current_company,
                     location, about, persona, match_score, rationale,
-                    suggested_note, note_status, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    suggested_note, note_status, action_decision, outreach_angle,
+                    confidence, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             """, [
                 profile_id,
                 profile.get("linkedin_url", ""),
@@ -186,7 +201,10 @@ class Database:
                 float(profile.get("match_score", 0.0)),
                 json.dumps(profile.get("rationale", [])),
                 profile.get("suggested_note", ""),
-                profile.get("note_status", "draft")
+                profile.get("note_status", "draft"),
+                profile.get("action_decision", "CONNECT_PEER"),
+                profile.get("outreach_angle", "peer_networking"),
+                float(profile.get("confidence", 0.85))
             ])
         return self.get_profile(profile_id)
 
@@ -204,7 +222,8 @@ class Database:
             row = con.execute("""
                 SELECT profile_id, linkedin_url, name, headline, current_company,
                        location, about, persona, match_score, rationale,
-                       suggested_note, note_status, created_at, updated_at
+                       suggested_note, note_status, action_decision, outreach_angle,
+                       confidence, created_at, updated_at
                 FROM evaluated_profiles WHERE profile_id = ?
             """, [profile_id]).fetchone()
 
@@ -224,12 +243,15 @@ class Database:
                 "rationale": json.loads(row[9]) if row[9] else [],
                 "suggested_note": row[10],
                 "note_status": row[11],
-                "created_at": row[12].isoformat() if row[12] else None,
-                "updated_at": row[13].isoformat() if row[13] else None
+                "action_decision": row[12] if len(row) > 12 else "CONNECT_PEER",
+                "outreach_angle": row[13] if len(row) > 13 else "peer_networking",
+                "confidence": row[14] if len(row) > 14 else 0.85,
+                "created_at": row[15].isoformat() if len(row) > 15 and row[15] else None,
+                "updated_at": row[16].isoformat() if len(row) > 16 and row[16] else None
             }
 
     def list_profiles(self, limit: int = 50, persona: Optional[str] = None, min_score: Optional[float] = None) -> List[Dict[str, Any]]:
-        query = "SELECT profile_id, linkedin_url, name, headline, current_company, location, persona, match_score, rationale, suggested_note, note_status, updated_at FROM evaluated_profiles WHERE 1=1"
+        query = "SELECT profile_id, linkedin_url, name, headline, current_company, location, persona, match_score, rationale, suggested_note, note_status, action_decision, outreach_angle, confidence, updated_at FROM evaluated_profiles WHERE 1=1"
         params = []
         if persona:
             query += " AND persona = ?"
@@ -257,7 +279,10 @@ class Database:
                     "rationale": json.loads(r[8]) if r[8] else [],
                     "suggested_note": r[9],
                     "note_status": r[10],
-                    "updated_at": r[11].isoformat() if r[11] else None
+                    "action_decision": r[11] if len(r) > 11 else "CONNECT_PEER",
+                    "outreach_angle": r[12] if len(r) > 12 else "peer_networking",
+                    "confidence": r[13] if len(r) > 13 else 0.85,
+                    "updated_at": r[14].isoformat() if len(r) > 14 and r[14] else None
                 })
             return results
 

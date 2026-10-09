@@ -260,6 +260,11 @@
   color: #ffffff;
 }
 
+.jobhunt-eval-badge.match-peer {
+  background: #2563eb;
+  color: #ffffff;
+}
+
 .jobhunt-eval-badge.match-low {
   background: #4b5563;
   color: #d1d5db;

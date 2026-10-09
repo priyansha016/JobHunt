@@ -231,6 +231,35 @@
           </div>
         </div>
 
+        <!-- Laya System 1 Decision -->
+        <div style="background: rgba(17, 24, 39, 0.7); border: 1px solid #374151; border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 11px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="color: #9ca3af;">Laya Decision:</span>
+            <span style="font-weight: 700; color: ${
+              evalData.action_decision === 'CONNECT_HIGH_PRIORITY' ? '#34d399' :
+              evalData.action_decision === 'CONNECT_PEER' ? '#60a5fa' : '#f87171'
+            };">
+              ${
+                evalData.action_decision === 'CONNECT_HIGH_PRIORITY' ? '🎯 MUST CONNECT' :
+                evalData.action_decision === 'CONNECT_PEER' ? '💡 CONNECT (Peer)' : '⏭️ SKIP'
+              }
+            </span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; color: #94a3b8;">
+            <span>Strategy:</span>
+            <span style="color: #93c5fd;">
+              ${
+                evalData.outreach_angle === 'recruiter_inquiry' ? 'Talent Recruiter Inbound' :
+                evalData.outreach_angle === 'manager_pitch' ? 'Technical Synergy Pitch' : 'Peer Knowledge Exchange'
+              }
+            </span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #6b7280; margin-top: 2px;">
+            <span>Model Confidence:</span>
+            <span>${Math.round((evalData.confidence || 0.85) * 100)}% calibrated</span>
+          </div>
+        </div>
+
         <!-- Rationale -->
         <div class="jhp-rationale-section">
           <div class="jhp-section-title">Synergy Highlights</div>

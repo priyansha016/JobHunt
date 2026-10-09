@@ -226,7 +226,15 @@ def evaluate_profile(payload: ProfilePayload):
         if default_tmpl:
             chosen_template_text = default_tmpl["template_text"]
 
-    note = generate_connection_note(profile_dict, persona, user_config, template_text=chosen_template_text)
+    outreach_angle = eval_result.get("outreach_angle", "peer_networking")
+    action_decision = eval_result.get("action_decision", "CONNECT_PEER")
+    confidence = eval_result.get("confidence", 0.85)
+
+    note = generate_connection_note(
+        profile_dict, persona, user_config,
+        template_text=chosen_template_text,
+        outreach_angle=outreach_angle
+    )
 
     # 3. Retrieve available templates for this persona
     available_templates = db.list_templates(persona=persona)
@@ -246,7 +254,10 @@ def evaluate_profile(payload: ProfilePayload):
         "match_score": match_score,
         "rationale": rationale,
         "suggested_note": note,
-        "note_status": "draft"
+        "note_status": "draft",
+        "action_decision": action_decision,
+        "outreach_angle": outreach_angle,
+        "confidence": confidence
     }
     saved = db.save_evaluated_profile(record)
 
@@ -283,6 +294,9 @@ async def match_profile_pdf(
     persona = eval_result["persona"]
     match_score = eval_result["match_score"]
     rationale = eval_result["rationale"]
+    outreach_angle = eval_result.get("outreach_angle", "peer_networking")
+    action_decision = eval_result.get("action_decision", "CONNECT_PEER")
+    confidence = eval_result.get("confidence", 0.85)
 
     chosen_template_text = None
     if template_id:
@@ -294,7 +308,11 @@ async def match_profile_pdf(
         if default_tmpl:
             chosen_template_text = default_tmpl["template_text"]
 
-    note = generate_connection_note(parsed_profile, persona, user_config, template_text=chosen_template_text)
+    note = generate_connection_note(
+        parsed_profile, persona, user_config,
+        template_text=chosen_template_text,
+        outreach_angle=outreach_angle
+    )
     available_templates = db.list_templates(persona=persona) or db.list_templates()
 
     saved_record = None
@@ -313,7 +331,10 @@ async def match_profile_pdf(
             "match_score": match_score,
             "rationale": rationale,
             "suggested_note": note,
-            "note_status": "draft"
+            "note_status": "draft",
+            "action_decision": action_decision,
+            "outreach_angle": outreach_angle,
+            "confidence": confidence
         }
         saved_record = db.save_evaluated_profile(record)
 
@@ -352,6 +373,9 @@ def match_profile_text(payload: TextMatchPayload):
     persona = eval_result["persona"]
     match_score = eval_result["match_score"]
     rationale = eval_result["rationale"]
+    outreach_angle = eval_result.get("outreach_angle", "peer_networking")
+    action_decision = eval_result.get("action_decision", "CONNECT_PEER")
+    confidence = eval_result.get("confidence", 0.85)
 
     chosen_template_text = None
     if payload.template_id:
@@ -363,7 +387,11 @@ def match_profile_text(payload: TextMatchPayload):
         if default_tmpl:
             chosen_template_text = default_tmpl["template_text"]
 
-    note = generate_connection_note(profile_dict, persona, user_config, template_text=chosen_template_text)
+    note = generate_connection_note(
+        profile_dict, persona, user_config,
+        template_text=chosen_template_text,
+        outreach_angle=outreach_angle
+    )
     available_templates = db.list_templates(persona=persona) or db.list_templates()
 
     saved_record = None
@@ -382,7 +410,10 @@ def match_profile_text(payload: TextMatchPayload):
             "match_score": match_score,
             "rationale": rationale,
             "suggested_note": note,
-            "note_status": "draft"
+            "note_status": "draft",
+            "action_decision": action_decision,
+            "outreach_angle": outreach_angle,
+            "confidence": confidence
         }
         saved_record = db.save_evaluated_profile(record)
 

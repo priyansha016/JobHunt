@@ -191,11 +191,21 @@
   function injectCardBadges(cardEl, res) {
     const container = document.createElement("div");
     container.className = "jhc-flag-badge-container";
+    const isRemove = res.action === "REMOVE";
+    const isUnfollow = res.action === "UNFOLLOW";
+
     container.innerHTML = `
-      <div class="jhc-flag-badge">⚠️ ${res.flag_reason}</div>
+      <div class="jhc-flag-badge" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>⚠️ ${res.flag_reason}</span>
+        ${res.confidence ? `<span style="font-size: 10px; opacity: 0.8; margin-left: 6px;">(${Math.round(res.confidence * 100)}% conf)</span>` : ''}
+      </div>
       <div class="jhc-quick-actions">
-        <button class="jhc-card-btn unfollow" data-action="unfollowed">Unfollow (Keep 500+)</button>
-        <button class="jhc-card-btn remove" data-action="removed">Disconnect</button>
+        <button class="jhc-card-btn unfollow" data-action="unfollowed">
+          ${isUnfollow ? '⭐ ' : ''}Unfollow (Feed Clean)
+        </button>
+        <button class="jhc-card-btn remove" data-action="removed">
+          ${isRemove ? '⭐ ' : ''}Disconnect
+        </button>
         <button class="jhc-card-btn keep" data-action="kept">Whitelist</button>
       </div>
     `;

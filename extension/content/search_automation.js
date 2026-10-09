@@ -12,6 +12,7 @@ const BACKEND_URL = "http://127.0.0.1:8765";
 let autopilotState = {
   isRunning: false,
   isPaused: false,
+  decisionMode: "laya_autonomous", // "laya_autonomous" (default) or "score_threshold"
   minScore: 65,
   dailyCap: 15,
   sentToday: 0,
@@ -72,7 +73,7 @@ function injectAutopilotHUD() {
   hud.innerHTML = `
     <div class="hud-header" id="hud-drag-handle">
       <div class="hud-title">
-        <span>⚡ Auto-Pilot</span>
+        <span>⚡ Auto-Pilot (Laya Brain)</span>
         <span class="hud-badge idle" id="hud-status-badge">Idle</span>
       </div>
       <div style="display: flex; gap: 6px; align-items: center;">
@@ -83,7 +84,7 @@ function injectAutopilotHUD() {
 
     <div class="hud-body">
       <div class="hud-status-banner" id="hud-status-text">
-        Ready. Set keywords and click Start to auto-connect with high-match peers.
+        Ready. Laya System 1 will autonomously evaluate each candidate and decide who to connect with.
       </div>
 
       <div class="hud-stats-grid">
@@ -104,9 +105,17 @@ function injectAutopilotHUD() {
       <div class="hud-target-card" id="hud-target-preview" style="display: none;">
         <div class="hud-target-name" id="hud-target-name">Target Candidate</div>
         <div class="hud-target-headline" id="hud-target-headline">Headline...</div>
-        <div class="hud-target-match">
-          <span id="hud-target-persona" style="color: #60a5fa; font-weight: 600;">Evaluating...</span>
-          <strong id="hud-target-score" style="color: #34d399;">--%</strong>
+        <div class="hud-target-match" style="margin-top: 4px; display: flex; justify-content: space-between; align-items: center;">
+          <span id="hud-target-persona" style="color: #60a5fa; font-weight: 600; font-size: 11px;">Evaluating...</span>
+          <strong id="hud-target-score" style="color: #34d399; font-size: 12px;">--%</strong>
+        </div>
+        <div id="hud-target-decision-row" style="margin-top: 6px; padding-top: 6px; border-top: 1px solid #374151; font-size: 11px; display: flex; justify-content: space-between;">
+          <span style="color: #9ca3af;">Laya Decision:</span>
+          <span id="hud-target-decision" style="font-weight: 700; color: #fbbf24;">Evaluating</span>
+        </div>
+        <div id="hud-target-strategy-row" style="margin-top: 3px; font-size: 10px; color: #94a3b8; display: flex; justify-content: space-between;">
+          <span>Strategy:</span>
+          <span id="hud-target-strategy" style="color: #93c5fd;">--</span>
         </div>
       </div>
 
@@ -118,6 +127,13 @@ function injectAutopilotHUD() {
 
       <div class="hud-settings" id="hud-settings-panel">
         <div class="hud-setting-row">
+          <span>Decision Brain:</span>
+          <select class="hud-setting-input" id="hud-cfg-mode" style="width: 140px; background: #111827; color: #60a5fa; border: 1px solid #374151; border-radius: 4px; padding: 2px 4px; font-size: 11px;">
+            <option value="laya_autonomous" selected>🤖 Laya Autonomous</option>
+            <option value="score_threshold">📊 Score Threshold</option>
+          </select>
+        </div>
+        <div class="hud-setting-row">
           <span>Min Match Score (%):</span>
           <input type="number" class="hud-setting-input" id="hud-cfg-minscore" min="40" max="95" value="${autopilotState.minScore}">
         </div>
@@ -126,7 +142,7 @@ function injectAutopilotHUD() {
           <input type="number" class="hud-setting-input" id="hud-cfg-dailycap" min="5" max="35" value="${autopilotState.dailyCap}">
         </div>
         <div style="font-size: 10px; color: #94a3b8; margin-top: 4px; line-height: 1.3;">
-          Enforces 7–14s human jitter and strictly &le;300 char pitches to keep account 100% safe.
+          Laya evaluates role synergy, account safety &amp; pitch angle. Enforces 7–14s human jitter and &le;300 char pitches.
         </div>
       </div>
     </div>
@@ -153,6 +169,19 @@ function setupHUDEvents(hud) {
     settingsPanel.classList.toggle("open");
   });
 
+  const modeSelect = document.getElementById("hud-cfg-mode");
+  if (modeSelect) {
+    modeSelect.addEventListener("change", (e) => {
+      autopilotState.decisionMode = e.target.value;
+      const banner = document.getElementById("hud-status-text");
+      if (banner && !autopilotState.isRunning) {
+        banner.innerText = autopilotState.decisionMode === "laya_autonomous"
+          ? "Mode: Laya Autonomous. System 1 decides candidate actions."
+          : `Mode: Score Threshold (>= ${autopilotState.minScore}%).`;
+      }
+    });
+  }
+
   document.getElementById("hud-cfg-minscore").addEventListener("change", (e) => {
     autopilotState.minScore = parseInt(e.target.value, 10) || 65;
     document.getElementById("hud-score-val").innerText = `${autopilotState.minScore}%`;
@@ -162,6 +191,7 @@ function setupHUDEvents(hud) {
     autopilotState.dailyCap = parseInt(e.target.value, 10) || 15;
     updateHUDStats();
   });
+
 
   startBtn.addEventListener("click", startAutopilot);
   pauseBtn.addEventListener("click", togglePause);
@@ -338,18 +368,68 @@ async function processNextCandidateCard() {
     return;
   }
 
-  const score = Math.round(evalResult.evaluation.match_score || 0);
-  const persona = evalResult.evaluation.persona || "Peer";
+  const evalData = evalResult.evaluation || {};
+  const score = Math.round(evalData.match_score || 0);
+  const persona = evalData.persona || "Peer";
+  const actionDecision = evalData.action_decision || "CONNECT_PEER";
+  const outreachAngle = evalData.outreach_angle || "peer_networking";
+  const confidence = evalData.confidence ? Math.round(evalData.confidence * 100) : 85;
+  const isSpam = evalData.is_spam || false;
   const note = evalResult.suggested_note || "";
 
   document.getElementById("hud-target-persona").innerText = persona;
   document.getElementById("hud-target-score").innerText = `${score}%`;
 
-  // Attach visual badge to card
-  attachCardBadge(card, score, persona);
+  const decisionEl = document.getElementById("hud-target-decision");
+  if (decisionEl) {
+    if (actionDecision === "CONNECT_HIGH_PRIORITY") {
+      decisionEl.innerText = "🎯 MUST CONNECT";
+      decisionEl.style.color = "#34d399";
+    } else if (actionDecision === "CONNECT_PEER") {
+      decisionEl.innerText = "💡 CONNECT (Peer)";
+      decisionEl.style.color = "#60a5fa";
+    } else {
+      decisionEl.innerText = isSpam ? "⚠️ SKIP (Spam/Risk)" : "⏭️ SKIP (Mismatch)";
+      decisionEl.style.color = "#f87171";
+    }
+  }
 
-  if (score >= autopilotState.minScore) {
-    updateHUDStatus("running", "Connecting", `Match: ${score}% >= ${autopilotState.minScore}%. Sending pitch to ${candidateData.name}...`);
+  const strategyEl = document.getElementById("hud-target-strategy");
+  if (strategyEl) {
+    const angleNames = {
+      recruiter_inquiry: "Talent Recruiter Inquiry",
+      manager_pitch: "Engineering Leadership Synergy",
+      peer_networking: "Technical Peer Exchange"
+    };
+    strategyEl.innerText = `${angleNames[outreachAngle] || outreachAngle} (${confidence}% conf)`;
+  }
+
+  // Attach visual badge to card
+  attachCardBadge(card, score, persona, actionDecision, isSpam);
+
+  // DECISION LOGIC:
+  let shouldConnect = false;
+  let decisionReason = "";
+
+  if (autopilotState.decisionMode === "laya_autonomous") {
+    if (isSpam || actionDecision === "SKIP") {
+      shouldConnect = false;
+      decisionReason = isSpam ? "Flagged by Laya: spam or solicitation risk" : "Laya Decision: Low career synergy (Skip)";
+    } else {
+      shouldConnect = true;
+      decisionReason = actionDecision === "CONNECT_HIGH_PRIORITY"
+        ? `Laya Decision: High-Priority Target (${score}% match, ${confidence}% conf)`
+        : `Laya Decision: Domain Peer Connection (${score}% match, ${confidence}% conf)`;
+    }
+  } else {
+    shouldConnect = (score >= autopilotState.minScore) && !isSpam;
+    decisionReason = shouldConnect
+      ? `Score ${score}% >= ${autopilotState.minScore}% threshold`
+      : `Score ${score}% < ${autopilotState.minScore}% threshold`;
+  }
+
+  if (shouldConnect) {
+    updateHUDStatus("running", "Connecting", `${decisionReason}. Pitching ${candidateData.name}...`);
     const success = await executeConnectionWithNote(candidateData.connectButton, note);
 
     if (success) {
@@ -379,7 +459,7 @@ async function processNextCandidateCard() {
       await sleep(1500);
     }
   } else {
-    updateHUDStatus("running", "Skipped", `Score ${score}% < ${autopilotState.minScore}% threshold. Skipping.`);
+    updateHUDStatus("running", "Skipped", `${decisionReason}. Skipping ${candidateData.name}.`);
     card.classList.add("jobhunt-card-skipped");
     autopilotState.skippedCount++;
     updateHUDStats();
@@ -464,16 +544,20 @@ function extractCandidateFromCard(card) {
   };
 }
 
-function attachCardBadge(card, score, persona) {
+function attachCardBadge(card, score, persona, actionDecision, isSpam) {
   let badge = card.querySelector(".jobhunt-eval-badge");
   if (!badge) {
     badge = document.createElement("div");
     card.style.position = "relative";
     card.appendChild(badge);
   }
-  const isHigh = score >= autopilotState.minScore;
-  badge.className = `jobhunt-eval-badge ${isHigh ? "match-high" : "match-low"}`;
-  badge.innerText = `Laya: ${score}% (${persona.split("/")[0].trim()})`;
+  const isTarget = actionDecision === "CONNECT_HIGH_PRIORITY";
+  const isPeer = actionDecision === "CONNECT_PEER";
+  const isSkip = isSpam || actionDecision === "SKIP";
+
+  badge.className = `jobhunt-eval-badge ${isTarget ? "match-high" : isPeer ? "match-peer" : "match-low"}`;
+  const decisionLabel = isTarget ? "🎯 Target" : isPeer ? "💡 Peer" : "⏭️ Skip";
+  badge.innerText = `Laya: ${decisionLabel} (${score}%)`;
 }
 
 async function executeConnectionWithNote(connectBtn, note) {
