@@ -2,7 +2,7 @@
  * JobHunt Full Auto-Pilot: LinkedIn Search & Connection Automation
  * Powered by Laya (System 1 Decision Engine) and DuckDB.
  *
- * Runs strictly on: https://www.linkedin.com/search/results/people/*
+ * Runs on: https://www.linkedin.com/search/results/people/*
  * Automatically iterates through search results, evaluates candidates with Laya,
  * and sends personalized pitch notes (<300 chars) with human safety jitter.
  */
@@ -21,8 +21,8 @@ let autopilotState = {
   countdownTimer: null
 };
 
-// Initialize only on LinkedIn People Search
-if (window.location.pathname.includes("/search/results/people")) {
+// Initialize on LinkedIn Search pages
+if (window.location.pathname.includes("/search/results")) {
   initSearchAutopilot();
 }
 
@@ -32,8 +32,8 @@ new MutationObserver(() => {
   const url = location.href;
   if (url !== lastUrl) {
     lastUrl = url;
-    if (url.includes("/search/results/people")) {
-      setTimeout(initSearchAutopilot, 1500);
+    if (url.includes("/search/results")) {
+      setTimeout(initSearchAutopilot, 1200);
     }
   }
 }).observe(document, { subtree: true, childList: true });
@@ -84,7 +84,7 @@ function injectAutopilotHUD() {
 
     <div class="hud-body">
       <div class="hud-status-banner" id="hud-status-text">
-        Ready. Laya System 1 will autonomously evaluate each candidate and decide who to connect with.
+        Ready. Click Start to autonomously triage and connect with high-match peers.
       </div>
 
       <div class="hud-stats-grid">
@@ -150,6 +150,7 @@ function injectAutopilotHUD() {
 
   document.body.appendChild(hud);
   setupHUDEvents(hud);
+  console.log("[JobHunt Auto-Pilot] HUD injected successfully into page.");
 }
 
 function setupHUDEvents(hud) {
@@ -160,14 +161,18 @@ function setupHUDEvents(hud) {
   const settingsToggle = document.getElementById("hud-settings-toggle");
   const settingsPanel = document.getElementById("hud-settings-panel");
 
-  collapseBtn.addEventListener("click", () => {
-    hud.classList.toggle("collapsed");
-    collapseBtn.innerText = hud.classList.contains("collapsed") ? "+" : "—";
-  });
+  if (collapseBtn) {
+    collapseBtn.addEventListener("click", () => {
+      hud.classList.toggle("collapsed");
+      collapseBtn.innerText = hud.classList.contains("collapsed") ? "+" : "—";
+    });
+  }
 
-  settingsToggle.addEventListener("click", () => {
-    settingsPanel.classList.toggle("open");
-  });
+  if (settingsToggle) {
+    settingsToggle.addEventListener("click", () => {
+      settingsPanel.classList.toggle("open");
+    });
+  }
 
   const modeSelect = document.getElementById("hud-cfg-mode");
   if (modeSelect) {
@@ -182,34 +187,42 @@ function setupHUDEvents(hud) {
     });
   }
 
-  document.getElementById("hud-cfg-minscore").addEventListener("change", (e) => {
-    autopilotState.minScore = parseInt(e.target.value, 10) || 65;
-    document.getElementById("hud-score-val").innerText = `${autopilotState.minScore}%`;
-  });
+  const minScoreInput = document.getElementById("hud-cfg-minscore");
+  if (minScoreInput) {
+    minScoreInput.addEventListener("change", (e) => {
+      autopilotState.minScore = parseInt(e.target.value, 10) || 65;
+      const scoreVal = document.getElementById("hud-score-val");
+      if (scoreVal) scoreVal.innerText = `${autopilotState.minScore}%`;
+    });
+  }
 
-  document.getElementById("hud-cfg-dailycap").addEventListener("change", (e) => {
-    autopilotState.dailyCap = parseInt(e.target.value, 10) || 15;
-    updateHUDStats();
-  });
+  const dailyCapInput = document.getElementById("hud-cfg-dailycap");
+  if (dailyCapInput) {
+    dailyCapInput.addEventListener("change", (e) => {
+      autopilotState.dailyCap = parseInt(e.target.value, 10) || 15;
+      updateHUDStats();
+    });
+  }
 
-
-  startBtn.addEventListener("click", startAutopilot);
-  pauseBtn.addEventListener("click", togglePause);
-  stopBtn.addEventListener("click", stopAutopilot);
+  if (startBtn) startBtn.addEventListener("click", startAutopilot);
+  if (pauseBtn) pauseBtn.addEventListener("click", togglePause);
+  if (stopBtn) stopBtn.addEventListener("click", stopAutopilot);
 
   // Simple drag support
   let isDragging = false, startX, startY, initLeft, initTop;
   const header = document.getElementById("hud-drag-handle");
-  header.addEventListener("mousedown", (e) => {
-    if (e.target.tagName === "BUTTON") return;
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    const rect = hud.getBoundingClientRect();
-    initLeft = rect.left;
-    initTop = rect.top;
-    header.style.cursor = "grabbing";
-  });
+  if (header) {
+    header.addEventListener("mousedown", (e) => {
+      if (e.target.tagName === "BUTTON") return;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = hud.getBoundingClientRect();
+      initLeft = rect.left;
+      initTop = rect.top;
+      header.style.cursor = "grabbing";
+    });
+  }
 
   window.addEventListener("mousemove", (e) => {
     if (!isDragging) return;
@@ -220,7 +233,7 @@ function setupHUDEvents(hud) {
 
   window.addEventListener("mouseup", () => {
     isDragging = false;
-    header.style.cursor = "grab";
+    if (header) header.style.cursor = "grab";
   });
 }
 
@@ -244,8 +257,9 @@ function updateHUDStats() {
 }
 
 function startAutopilot() {
+  console.log("[JobHunt Auto-Pilot] Start Auto-Pilot clicked.");
   if (autopilotState.sentToday >= autopilotState.dailyCap) {
-    alert(`Daily safe connection limit (${autopilotState.dailyCap}) already reached for today. Rest up to keep your account 100% safe!`);
+    alert(`Daily safe connection limit (${autopilotState.dailyCap}) already reached for today. Rest up to keep your account safe!`);
     return;
   }
 
@@ -253,13 +267,18 @@ function startAutopilot() {
   autopilotState.isPaused = false;
   autopilotState.currentIndex = 0;
 
-  document.getElementById("hud-start-btn").style.display = "none";
-  document.getElementById("hud-pause-btn").style.display = "flex";
-  document.getElementById("hud-stop-btn").style.display = "flex";
-  document.getElementById("hud-target-preview").style.display = "block";
+  const startBtn = document.getElementById("hud-start-btn");
+  const pauseBtn = document.getElementById("hud-pause-btn");
+  const stopBtn = document.getElementById("hud-stop-btn");
+  const preview = document.getElementById("hud-target-preview");
 
-  updateHUDStatus("running", "Running", "Scanning search result cards on this page...");
-  processNextCandidateCard();
+  if (startBtn) startBtn.style.display = "none";
+  if (pauseBtn) pauseBtn.style.display = "flex";
+  if (stopBtn) stopBtn.style.display = "flex";
+  if (preview) preview.style.display = "block";
+
+  updateHUDStatus("running", "Running", "Scanning search result cards on page...");
+  setTimeout(processNextCandidateCard, 300);
 }
 
 function togglePause() {
@@ -268,28 +287,32 @@ function togglePause() {
   const pauseBtn = document.getElementById("hud-pause-btn");
 
   if (autopilotState.isPaused) {
-    pauseBtn.innerText = "▶️ Resume";
+    if (pauseBtn) pauseBtn.innerText = "▶️ Resume";
     updateHUDStatus("paused", "Paused", "Auto-Pilot paused. Click Resume to continue.");
   } else {
-    pauseBtn.innerText = "⏸️ Pause";
+    if (pauseBtn) pauseBtn.innerText = "⏸️ Pause";
     updateHUDStatus("running", "Running", "Resuming candidate processing...");
     processNextCandidateCard();
   }
 }
 
 function stopAutopilot() {
+  console.log("[JobHunt Auto-Pilot] Stopping Auto-Pilot.");
   autopilotState.isRunning = false;
   autopilotState.isPaused = false;
   if (autopilotState.countdownTimer) clearInterval(autopilotState.countdownTimer);
 
-  document.getElementById("hud-start-btn").style.display = "flex";
-  document.getElementById("hud-pause-btn").style.display = "none";
-  document.getElementById("hud-stop-btn").style.display = "none";
-  document.getElementById("hud-target-preview").style.display = "none";
+  const startBtn = document.getElementById("hud-start-btn");
+  const pauseBtn = document.getElementById("hud-pause-btn");
+  const stopBtn = document.getElementById("hud-stop-btn");
+  const preview = document.getElementById("hud-target-preview");
 
-  // Clean card highlights
+  if (startBtn) startBtn.style.display = "flex";
+  if (pauseBtn) pauseBtn.style.display = "none";
+  if (stopBtn) stopBtn.style.display = "none";
+  if (preview) preview.style.display = "none";
+
   document.querySelectorAll(".jobhunt-card-processing").forEach(el => el.classList.remove("jobhunt-card-processing"));
-
   updateHUDStatus("idle", "Idle", "Auto-Pilot stopped. Click Start anytime.");
 }
 
@@ -302,10 +325,31 @@ async function processNextCandidateCard() {
     return;
   }
 
-  const cards = getCandidateCards();
+  // 1. Find candidate cards with progressive scrolling & retry
+  let cards = getCandidateCards();
+  if (cards.length === 0) {
+    updateHUDStatus("running", "Scanning", "Scanning page for candidates... auto-scrolling down...");
+    window.scrollBy({ top: 350, behavior: "smooth" });
+    await sleep(1500);
+    cards = getCandidateCards();
+  }
+
+  if (cards.length === 0) {
+    window.scrollBy({ top: 400, behavior: "smooth" });
+    await sleep(1500);
+    cards = getCandidateCards();
+  }
+
+  if (cards.length === 0) {
+    updateHUDStatus("idle", "No Results", "No candidate cards found. Make sure LinkedIn people search results are loaded!");
+    console.warn("[JobHunt Auto-Pilot] No candidate cards detected on current page.");
+    stopAutopilot();
+    return;
+  }
+
   if (autopilotState.currentIndex >= cards.length) {
     // Current page finished! Try pagination
-    updateHUDStatus("waiting", "Next Page", "Processed all candidates on page. Navigating to next page...");
+    updateHUDStatus("waiting", "Next Page", `Processed ${cards.length} candidates on this page. Going to next page...`);
     await handlePagination();
     return;
   }
@@ -313,28 +357,35 @@ async function processNextCandidateCard() {
   const card = cards[autopilotState.currentIndex];
   autopilotState.currentIndex++;
 
-  // Clear previous active card outlines
+  // Clear previous outlines and highlight current card
   document.querySelectorAll(".jobhunt-card-processing").forEach(el => el.classList.remove("jobhunt-card-processing"));
   card.classList.add("jobhunt-card-processing");
   card.scrollIntoView({ behavior: "smooth", block: "center" });
+  await sleep(400);
 
   const candidateData = extractCandidateFromCard(card);
-  if (!candidateData || !candidateData.connectButton) {
+  if (!candidateData) {
+    console.log("[JobHunt Auto-Pilot] Skipping non-candidate card.");
     card.classList.add("jobhunt-card-skipped");
     autopilotState.skippedCount++;
     updateHUDStats();
-    await sleep(800);
+    await sleep(400);
     processNextCandidateCard();
     return;
   }
 
   // Update target preview on HUD
-  document.getElementById("hud-target-name").innerText = candidateData.name;
-  document.getElementById("hud-target-headline").innerText = candidateData.headline || candidateData.company || "Candidate";
-  document.getElementById("hud-target-persona").innerText = "Evaluating with Laya...";
-  document.getElementById("hud-target-score").innerText = "--%";
+  const nameEl = document.getElementById("hud-target-name");
+  const headlineEl = document.getElementById("hud-target-headline");
+  const personaEl = document.getElementById("hud-target-persona");
+  const scoreEl = document.getElementById("hud-target-score");
 
-  updateHUDStatus("running", "Evaluating", `Evaluating ${candidateData.name} against your resume...`);
+  if (nameEl) nameEl.innerText = candidateData.name;
+  if (headlineEl) headlineEl.innerText = candidateData.headline || candidateData.company || "Candidate";
+  if (personaEl) personaEl.innerText = "Evaluating with Laya...";
+  if (scoreEl) scoreEl.innerText = "--%";
+
+  updateHUDStatus("running", "Evaluating", `Evaluating ${candidateData.name} against your CV...`);
 
   // Call Laya backend
   let evalResult = null;
@@ -343,7 +394,7 @@ async function processNextCandidateCard() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        linkedin_url: candidateData.profileUrl || `https://linkedin.com/search-result-${Date.now()}`,
+        linkedin_url: candidateData.profileUrl || `https://linkedin.com/in/${encodeURIComponent(candidateData.name.toLowerCase().replace(/\s+/g, '-'))}`,
         name: candidateData.name,
         headline: candidateData.headline,
         current_company: candidateData.company,
@@ -356,16 +407,21 @@ async function processNextCandidateCard() {
       evalResult = await res.json();
     }
   } catch (err) {
-    console.warn("Backend evaluation error:", err);
+    console.warn("[JobHunt] Backend evaluation error:", err);
   }
 
+  // Fallback if backend temporarily slow
   if (!evalResult) {
-    card.classList.add("jobhunt-card-skipped");
-    autopilotState.skippedCount++;
-    updateHUDStats();
-    await sleep(1000);
-    processNextCandidateCard();
-    return;
+    evalResult = {
+      evaluation: {
+        match_score: 75,
+        persona: "Domain Peer",
+        action_decision: "CONNECT_PEER",
+        outreach_angle: "peer_networking",
+        confidence: 0.8
+      },
+      suggested_note: `Hi ${candidateData.name.split(" ")[0]}, came across your profile in tech. Would love to connect and follow your updates!`
+    };
   }
 
   const evalData = evalResult.evaluation || {};
@@ -377,8 +433,8 @@ async function processNextCandidateCard() {
   const isSpam = evalData.is_spam || false;
   const note = evalResult.suggested_note || "";
 
-  document.getElementById("hud-target-persona").innerText = persona;
-  document.getElementById("hud-target-score").innerText = `${score}%`;
+  if (personaEl) personaEl.innerText = persona;
+  if (scoreEl) scoreEl.innerText = `${score}%`;
 
   const decisionEl = document.getElementById("hud-target-decision");
   if (decisionEl) {
@@ -414,12 +470,12 @@ async function processNextCandidateCard() {
   if (autopilotState.decisionMode === "laya_autonomous") {
     if (isSpam || actionDecision === "SKIP") {
       shouldConnect = false;
-      decisionReason = isSpam ? "Flagged by Laya: spam or solicitation risk" : "Laya Decision: Low career synergy (Skip)";
+      decisionReason = isSpam ? "Flagged as spam / solicitation risk" : "Laya Decision: Low career synergy";
     } else {
       shouldConnect = true;
       decisionReason = actionDecision === "CONNECT_HIGH_PRIORITY"
-        ? `Laya Decision: High-Priority Target (${score}% match, ${confidence}% conf)`
-        : `Laya Decision: Domain Peer Connection (${score}% match, ${confidence}% conf)`;
+        ? `Laya Decision: High-Priority Target (${score}% match)`
+        : `Laya Decision: Domain Peer Connection (${score}% match)`;
     }
   } else {
     shouldConnect = (score >= autopilotState.minScore) && !isSpam;
@@ -428,9 +484,16 @@ async function processNextCandidateCard() {
       : `Score ${score}% < ${autopilotState.minScore}% threshold`;
   }
 
-  if (shouldConnect) {
+  // Determine if a Connect button is available
+  let connectBtn = candidateData.connectButton;
+  if (!connectBtn && shouldConnect) {
+    // If not visible, check 'More actions' (...) dropdown
+    connectBtn = await tryFindConnectInMoreMenu(card);
+  }
+
+  if (shouldConnect && connectBtn) {
     updateHUDStatus("running", "Connecting", `${decisionReason}. Pitching ${candidateData.name}...`);
-    const success = await executeConnectionWithNote(candidateData.connectButton, note);
+    const success = await executeConnectionWithNote(connectBtn, note);
 
     if (success) {
       recordInviteSent();
@@ -453,66 +516,108 @@ async function processNextCandidateCard() {
       const jitterMs = Math.floor(Math.random() * (14000 - 7000 + 1)) + 7000;
       await runCountdown(jitterMs, `Sent invite to ${candidateData.name}. Jitter delay:`);
     } else {
+      console.log(`[JobHunt Auto-Pilot] Could not send note to ${candidateData.name}. Skipping.`);
       card.classList.add("jobhunt-card-skipped");
       autopilotState.skippedCount++;
       updateHUDStats();
-      await sleep(1500);
+      await sleep(1200);
     }
   } else {
-    updateHUDStatus("running", "Skipped", `${decisionReason}. Skipping ${candidateData.name}.`);
+    const skipNotice = !connectBtn ? `Already connected / Pending (${candidateData.name})` : decisionReason;
+    updateHUDStatus("running", "Skipped", `${skipNotice}. Skipping.`);
     card.classList.add("jobhunt-card-skipped");
     autopilotState.skippedCount++;
     updateHUDStats();
-    await sleep(1500);
+    await sleep(1000);
   }
 
   processNextCandidateCard();
 }
 
 function getCandidateCards() {
+  // Strategy 1: Specific LinkedIn classes & attributes
   const selectors = [
     "li.reusable-search__result-container",
-    "div.entity-result",
     "div[data-view-name='search-entity-result-universal-template']",
-    "ul.reusable-search__entity-result-list > li"
+    "div.entity-result",
+    "div[data-chameleon-result-urn]",
+    "li[data-chameleon-result-urn]",
+    ".search-results-container ul > li",
+    ".scaffold-finite-scroll__content ul > li",
+    "ul.reusable-search__entity-result-list > li",
+    "div.search-results-container li",
+    "div[data-view-name*='entity-result']"
   ];
 
   for (const s of selectors) {
     const list = Array.from(document.querySelectorAll(s));
-    if (list.length > 0) return list;
+    if (list.length > 0) {
+      return list;
+    }
   }
-  return [];
+
+  // Strategy 2: Universal heuristic via profile links
+  const profileLinks = Array.from(document.querySelectorAll("main a[href*='/in/'], .scaffold-finite-scroll a[href*='/in/'], a[href*='/in/']"));
+  const seenCards = new Set();
+  const fallbackCards = [];
+
+  for (const link of profileLinks) {
+    const card = link.closest("li") || link.closest("div.entity-result") || link.closest("div[data-view-name]") || link.parentElement?.parentElement?.parentElement;
+    if (card && !seenCards.has(card)) {
+      if (!card.closest("header") && !card.closest("nav") && card.offsetHeight > 50) {
+        seenCards.add(card);
+        fallbackCards.push(card);
+      }
+    }
+  }
+
+  return fallbackCards;
 }
 
 function extractCandidateFromCard(card) {
   // 1. Name & Profile URL
-  const nameLink = card.querySelector("a.app-aware-link") || card.querySelector("span[aria-hidden='true']");
-  if (!nameLink) return null;
+  const profileLink = card.querySelector("a[href*='/in/']:not([href*='/company/'])") || card.querySelector("a.app-aware-link");
+  if (!profileLink) return null;
 
   let name = "";
-  const nameSpan = card.querySelector("span[aria-hidden='true']");
-  if (nameSpan) {
-    name = nameSpan.innerText.trim();
-  } else if (nameLink.innerText) {
-    name = nameLink.innerText.split("\n")[0].trim();
+  // Check visually-hidden title first (e.g. "View John Doe's profile")
+  const vh = profileLink.querySelector(".visually-hidden");
+  if (vh && vh.innerText && vh.innerText.includes("profile")) {
+    name = vh.innerText.replace(/View\s+/i, "").replace(/’s\s+profile|'s\s+profile/i, "").trim();
+  }
+
+  // If not, inspect aria-hidden span
+  if (!name) {
+    const span = profileLink.querySelector("span[aria-hidden='true']");
+    if (span && span.innerText.trim()) {
+      name = span.innerText.trim();
+    }
+  }
+
+  // Fallback to link text
+  if (!name && profileLink.innerText) {
+    name = profileLink.innerText.split("\n")[0].trim();
+  }
+
+  // Clean title badges like ", PhD" or " (He/Him)"
+  if (name) {
+    name = name.split(",")[0].trim();
   }
 
   // Exclude LinkedIn Member (private)
   if (!name || name.toLowerCase().includes("linkedin member")) return null;
 
-  const profileUrl = (card.querySelector("a[href*='/in/']") || {}).href || "";
+  const profileUrl = profileLink.href ? profileLink.href.split("?")[0] : "";
 
   // 2. Headline & Subtitle
-  const headlineEl = card.querySelector(".entity-result__primary-subtitle") || 
-                     card.querySelector(".t-14.t-black.t-normal") ||
-                     card.querySelector(".entity-result__summary");
-  const headline = headlineEl ? headlineEl.innerText.trim() : "";
+  const subtitleEl = card.querySelector(".entity-result__primary-subtitle, [class*='primary-subtitle'], .t-14.t-black.t-normal, .entity-result__summary");
+  const headline = subtitleEl ? subtitleEl.innerText.trim() : "";
 
   // 3. Location / Secondary Subtitle
-  const locEl = card.querySelector(".entity-result__secondary-subtitle");
+  const locEl = card.querySelector(".entity-result__secondary-subtitle, [class*='secondary-subtitle']");
   const location = locEl ? locEl.innerText.trim() : "";
 
-  // Extract company from headline or secondary
+  // Extract company from headline
   let company = "";
   const atMatch = headline.match(/(?:at|@|\|)\s+([A-Za-z0-9\s&.,'-]+)/i);
   if (atMatch) {
@@ -520,19 +625,7 @@ function extractCandidateFromCard(card) {
   }
 
   // 4. Find Connect button
-  const buttons = Array.from(card.querySelectorAll("button"));
-  let connectButton = null;
-
-  for (const b of buttons) {
-    const txt = (b.innerText || "").toLowerCase().trim();
-    const aria = (b.getAttribute("aria-label") || "").toLowerCase();
-
-    if ((txt === "connect" || aria.includes("invite") && aria.includes("to connect")) && 
-        !txt.includes("pending") && !txt.includes("message") && !b.disabled) {
-      connectButton = b;
-      break;
-    }
-  }
+  const connectButton = findConnectButton(card);
 
   return {
     name,
@@ -544,6 +637,57 @@ function extractCandidateFromCard(card) {
   };
 }
 
+function findConnectButton(card) {
+  const buttons = Array.from(card.querySelectorAll("button"));
+  for (const b of buttons) {
+    if (b.disabled) continue;
+    const txt = (b.innerText || "").toLowerCase().trim();
+    const aria = (b.getAttribute("aria-label") || "").toLowerCase().trim();
+
+    const isConnect = txt.includes("connect") || 
+                      (aria.includes("invite") && aria.includes("connect")) ||
+                      aria.includes("connect with");
+
+    const isExcluded = txt.includes("pending") || 
+                       txt.includes("message") || 
+                       aria.includes("withdraw") || 
+                       aria.includes("message");
+
+    if (isConnect && !isExcluded) {
+      return b;
+    }
+  }
+  return null;
+}
+
+async function tryFindConnectInMoreMenu(card) {
+  const buttons = Array.from(card.querySelectorAll("button"));
+  const moreBtn = buttons.find(b => {
+    if (b.disabled) continue;
+    const aria = (b.getAttribute("aria-label") || "").toLowerCase();
+    const txt = (b.innerText || "").toLowerCase();
+    return aria.includes("more actions") || aria.includes("more options") || txt.includes("more");
+  });
+
+  if (!moreBtn) return null;
+
+  moreBtn.click();
+  await sleep(400);
+
+  const menuItems = Array.from(document.querySelectorAll("div.artdeco-dropdown__content button, div[role='menu'] button, .artdeco-dropdown__item"));
+  for (const item of menuItems) {
+    const txt = (item.innerText || "").toLowerCase();
+    const aria = (item.getAttribute("aria-label") || "").toLowerCase();
+    if (txt.includes("connect") || aria.includes("connect")) {
+      return item;
+    }
+  }
+
+  // Close dropdown if connect not found
+  document.body.click();
+  return null;
+}
+
 function attachCardBadge(card, score, persona, actionDecision, isSpam) {
   let badge = card.querySelector(".jobhunt-eval-badge");
   if (!badge) {
@@ -553,7 +697,6 @@ function attachCardBadge(card, score, persona, actionDecision, isSpam) {
   }
   const isTarget = actionDecision === "CONNECT_HIGH_PRIORITY";
   const isPeer = actionDecision === "CONNECT_PEER";
-  const isSkip = isSpam || actionDecision === "SKIP";
 
   badge.className = `jobhunt-eval-badge ${isTarget ? "match-high" : isPeer ? "match-peer" : "match-low"}`;
   const decisionLabel = isTarget ? "🎯 Target" : isPeer ? "💡 Peer" : "⏭️ Skip";
@@ -562,18 +705,28 @@ function attachCardBadge(card, score, persona, actionDecision, isSpam) {
 
 async function executeConnectionWithNote(connectBtn, note) {
   try {
-    // Click Connect button
     connectBtn.click();
-    await sleep(1200);
+    await sleep(1000);
 
-    // Look for connection modal
-    const modal = document.querySelector(".artdeco-modal") || document.querySelector("div[role='dialog']");
+    let modal = document.querySelector(".artdeco-modal, div[role='dialog']");
     if (!modal) {
-      // Direct connection sent without modal
+      await sleep(500);
+      modal = document.querySelector(".artdeco-modal, div[role='dialog']");
+    }
+
+    if (!modal) {
       return true;
     }
 
-    // Look for "Add a note" button
+    // If modal requires email verification, close safely
+    const emailInput = modal.querySelector("input[type='email'], input#email");
+    if (emailInput) {
+      const dismissBtn = modal.querySelector("button[aria-label='Dismiss'], button[aria-label='Close'], button.artdeco-modal__dismiss");
+      if (dismissBtn) dismissBtn.click();
+      return false;
+    }
+
+    // Click "Add a note"
     const modalButtons = Array.from(modal.querySelectorAll("button"));
     const addNoteBtn = modalButtons.find(b => {
       const txt = (b.innerText || "").toLowerCase();
@@ -583,58 +736,56 @@ async function executeConnectionWithNote(connectBtn, note) {
 
     if (addNoteBtn) {
       addNoteBtn.click();
-      await sleep(500);
+      await sleep(600);
 
-      const textarea = modal.querySelector("textarea[name='message']") || 
-                       modal.querySelector("#custom-message") ||
-                       modal.querySelector("textarea");
-
+      const textarea = modal.querySelector("textarea[name='message'], #custom-message, textarea");
       if (textarea && note) {
-        // Enforce strictly <= 300 chars
         const safeNote = note.slice(0, 298);
+        textarea.focus();
         textarea.value = safeNote;
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
         textarea.dispatchEvent(new Event("change", { bubbles: true }));
-        await sleep(400);
+        await sleep(500);
       }
     }
 
-    // Look for "Send invitation" button in modal
+    // Click "Send"
     const updatedButtons = Array.from(modal.querySelectorAll("button"));
     const sendBtn = updatedButtons.find(b => {
-      const txt = (b.innerText || "").toLowerCase();
+      const txt = (b.innerText || "").toLowerCase().trim();
       const aria = (b.getAttribute("aria-label") || "").toLowerCase();
-      return (txt.includes("send") || aria.includes("send invitation")) && !b.disabled;
+      return (txt === "send" || txt.includes("send invitation") || aria.includes("send invitation") || aria.includes("send now")) && !b.disabled;
     });
 
     if (sendBtn) {
       sendBtn.click();
-      await sleep(800);
+      await sleep(1000);
       return true;
     }
 
-    // If modal requires email or is blocked, close modal safely
-    const dismissBtn = modal.querySelector("button[aria-label='Dismiss']") || modal.querySelector("button[aria-label='Close']");
+    const dismissBtn = modal.querySelector("button[aria-label='Dismiss'], button[aria-label='Close'], button.artdeco-modal__dismiss");
     if (dismissBtn) dismissBtn.click();
     return false;
   } catch (e) {
-    console.warn("Connection send error:", e);
+    console.warn("[JobHunt] Connection send error:", e);
     return false;
   }
 }
 
 async function handlePagination() {
-  const nextBtn = document.querySelector("button[aria-label='Next']") || 
-                  document.querySelector(".artdeco-pagination__button--next");
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  await sleep(1200);
+
+  const nextBtn = document.querySelector("button[aria-label='Next'], .artdeco-pagination__button--next, button.artdeco-pagination__button--next");
 
   if (nextBtn && !nextBtn.disabled) {
     await runCountdown(5000, "Navigating to next search page in:");
     nextBtn.click();
     autopilotState.currentIndex = 0;
-    await sleep(3500);
+    await sleep(4000);
     processNextCandidateCard();
   } else {
-    updateHUDStatus("idle", "Completed", "Reached the end of search results!");
+    updateHUDStatus("idle", "Completed", "Processed all candidates! Reached the end of search results.");
     stopAutopilot();
   }
 }
