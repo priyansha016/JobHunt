@@ -98,10 +98,30 @@ Skills: Python, TypeScript, React, Docker, FastAPI, PostgreSQL, AWS, Microservic
         note = fill_template(tmpl, profile, user_config)
         self.assertEqual(
             note,
-            "Hi Jessica, I'm a Senior Full Stack Engineer specializing in Python and TypeScript at Figma. Let's connect!"
+            "Hi Jessica, I'm a Senior Full Stack Engineer specializing in Python and FastAPI at Figma. Let's connect!"
         )
         self.assertLessEqual(len(note), 300)
+
+    def test_priyansha_cv_extraction(self):
+        import os
+        cv_path = "/Users/priyanshasinha/Documents/CV/PriyanshaRS_CV.pdf"
+        if not os.path.exists(cv_path):
+            self.skipTest("PriyanshaRS_CV.pdf not found in Documents/CV/")
+
+        from backend.utils.pdf_parser import extract_text_from_pdf
+        with open(cv_path, "rb") as f:
+            text = extract_text_from_pdf(f.read())
+
+        info = extract_resume_profile(text)
+        self.assertEqual(info["primary_role"], "Bioinformatics Engineer")
+        self.assertIn("Bioinformatics", info["skills"])
+        self.assertIn("Computational Genomics", info["skills"])
+        self.assertIn("Machine Learning", info["skills"])
+        self.assertIn("PyTorch", info["skills"])
+        self.assertIn("Nextflow", info["skills"])
+        self.assertIn("Python", info["skills"])
 
 
 if __name__ == "__main__":
     unittest.main()
+

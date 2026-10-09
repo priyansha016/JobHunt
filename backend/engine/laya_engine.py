@@ -43,52 +43,95 @@ def _ensure_laya_loaded():
 
 # Common tech titles and skills dictionary for quick resume extraction
 TECH_ROLES = [
+    # Bioinformatics & Computational Biology
+    "Bioinformatics Engineer", "Bioinformatics Scientist", "Computational Biologist",
+    "Computational Genomics Scientist", "Genomics Data Scientist", "Genomics Engineer",
+    "Biomedical Data Scientist", "Research Scientist",
+    # AI, ML & Data
+    "Machine Learning Engineer", "MLOps Engineer", "AI Engineer", "Deep Learning Engineer",
+    "Data Scientist", "Applied Scientist", "Data Engineer",
+    # Software & Systems
     "Staff Software Engineer", "Principal Software Engineer", "Lead Software Engineer",
     "Senior Software Engineer", "Senior Full Stack Engineer", "Senior Backend Engineer",
     "Senior Frontend Engineer", "Software Engineer", "Full Stack Developer",
-    "Full Stack Engineer", "Backend Developer", "Backend Engineer", "Frontend Developer",
-    "Frontend Engineer", "DevOps Engineer", "Site Reliability Engineer", "Platform Engineer",
-    "Cloud Engineer", "Data Engineer", "Machine Learning Engineer", "AI Engineer",
-    "Engineering Manager", "Technical Lead", "Solutions Architect", "Systems Engineer"
+    "Full Stack Engineer", "Backend Developer", "Backend Engineer", "DevOps Engineer",
+    "Platform Engineer", "Cloud Engineer", "Engineering Manager", "Technical Lead"
 ]
 
 COMMON_SKILLS = [
-    "Python", "JavaScript", "TypeScript", "React", "Node.js", "FastAPI", "Django", "Flask",
-    "Go", "Golang", "Rust", "Java", "C++", "C#", "SQL", "PostgreSQL", "MySQL", "MongoDB",
-    "Redis", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "GraphQL", "REST APIs",
-    "Microservices", "Kafka", "Git", "Terraform", "Next.js", "Vue", "Tailwind", "PyTorch"
+    # AI, ML, & GenAI
+    "Machine Learning", "Deep Learning", "PyTorch", "TensorFlow", "Scikit-learn", "XGBoost",
+    "Random Forest", "GNNs", "CNNs", "SHAP", "LangChain", "RAG", "Ollama", "Neo4j",
+    "Knowledge Graphs", "NLP",
+    # Bioinformatics, Genomics, & Science
+    "Bioinformatics", "Computational Genomics", "NGS Analysis", "NGS", "RNA-Seq", "scRNA-Seq",
+    "Multi-Omics", "Variant Calling", "WES", "Structural Bioinformatics", "Nextflow", "Seurat",
+    # Languages, Data, & Frameworks
+    "Python", "pandas", "NumPy", "R", "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis",
+    "FastAPI", "Django", "Flask", "JavaScript", "TypeScript", "React", "Next.js", "Node.js",
+    "Go", "Rust", "Java", "C++",
+    # Cloud, DevOps, & Infrastructure
+    "Docker", "Kubernetes", "AWS", "Azure", "GCP", "Git", "Bash", "Linux", "REST APIs"
 ]
 
 
 def extract_resume_profile(resume_text: str) -> Dict[str, Any]:
     """
     Auto-extracts primary title and skills directly from resume text.
-    No manual target roles needed!
+    Handles engineering, bioinformatics, genomics, machine learning, and data science profiles.
     """
     if not resume_text:
         return {
-            "primary_role": "Software Engineer",
-            "skills": ["Full Stack", "Python", "Cloud Architecture"]
+            "primary_role": "Bioinformatics Engineer",
+            "skills": ["Python", "Machine Learning", "Bioinformatics", "Nextflow"]
         }
 
     resume_lower = resume_text.lower()
 
-    # 1. Detect role
-    detected_role = "Software Engineer"
-    for role in TECH_ROLES:
-        if role.lower() in resume_lower:
-            detected_role = role
-            break
+    # 1. Detect role: First inspect headline lines with '·' (excluding skill category lines with ':')
+    detected_role = None
+    for line in resume_text.splitlines()[:30]:
+        line_clean = line.strip()
+        if "·" in line_clean and ":" not in line_clean and any(
+            k in line_clean.lower() for k in ["engineer", "scientist", "genomics", "developer", "biologist", "researcher"]
+        ):
+            parts = [p.strip() for p in line_clean.split("·") if p.strip()]
+            if parts:
+                detected_role = parts[0]
+                break
 
-    # 2. Detect skills
-    detected_skills = []
+    # Next check summary statements like "... Engineer with X years of experience"
+    if not detected_role:
+        summary_match = re.search(
+            r"\b([A-Z][a-zA-Z\s]{3,35}(?:Engineer|Scientist|Biologist|Developer|Specialist))\s+with\s+\d+\s+years",
+            resume_text
+        )
+        if summary_match:
+            detected_role = summary_match.group(1).strip()
+
+    # Next check ordered TECH_ROLES
+    if not detected_role:
+        for role in TECH_ROLES:
+            if role.lower() in resume_lower:
+                detected_role = role
+                break
+
+    detected_role = detected_role or "Software Engineer"
+
+    # 2. Detect skills using boundary matching and preserve appearance order
+    found_skills = []
     for skill in COMMON_SKILLS:
-        pattern = r'\b' + re.escape(skill.lower()) + r'\b'
-        if re.search(pattern, resume_lower):
-            detected_skills.append(skill)
+        pattern = r"(?<![a-zA-Z0-9])" + re.escape(skill.lower()) + r"(?![a-zA-Z0-9])"
+        match = re.search(pattern, resume_lower)
+        if match:
+            found_skills.append((match.start(), skill))
+
+    # Sort skills by order of prominence in the resume
+    found_skills.sort(key=lambda x: x[0])
+    detected_skills = [s[1] for s in found_skills]
 
     if not detected_skills:
-        detected_skills = ["Software Engineering", "Full Stack Development"]
+        detected_skills = ["Python", "Machine Learning", "Data Engineering"]
 
     return {
         "primary_role": detected_role,

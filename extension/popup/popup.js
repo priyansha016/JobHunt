@@ -193,25 +193,56 @@ function updateDetectedResumeStats(resumeText) {
   if (!roleEl || !skillsEl) return;
 
   const roles = [
+    "Bioinformatics Engineer", "Bioinformatics Scientist", "Computational Biologist",
+    "Computational Genomics Scientist", "Genomics Data Scientist", "Genomics Engineer",
+    "Machine Learning Engineer", "AI Engineer", "Data Scientist", "Research Scientist",
     "Staff Software Engineer", "Senior Software Engineer", "Senior Full Stack Engineer",
     "Senior Backend Engineer", "Software Engineer", "Full Stack Engineer", "Backend Engineer"
   ];
   const skills = [
-    "Python", "TypeScript", "React", "FastAPI", "Docker", "Kubernetes", "AWS", "SQL", "PostgreSQL"
+    "Machine Learning", "Deep Learning", "PyTorch", "TensorFlow", "Scikit-learn", "Nextflow",
+    "Bioinformatics", "Computational Genomics", "NGS Analysis", "RNA-Seq", "Multi-Omics",
+    "LangChain", "RAG", "Neo4j", "Python", "pandas", "NumPy", "R", "SQL", "PostgreSQL",
+    "Docker", "AWS", "FastAPI", "Git"
   ];
 
-  const lower = (resumeText || "").toLowerCase();
-  let foundRole = "Software Engineer";
-  for (const r of roles) {
-    if (lower.includes(r.toLowerCase())) {
-      foundRole = r;
-      break;
+  const lines = (resumeText || "").split("\n");
+  let foundRole = null;
+
+  // Check for headline line with '·' or '|'
+  for (const line of lines.slice(0, 20)) {
+    const trimmed = line.trim();
+    if ((trimmed.includes("·") || trimmed.includes("|")) && 
+        /(engineer|scientist|genomics|developer|biologist)/i.test(trimmed)) {
+      const parts = trimmed.split(/[·|]/).map(p => p.trim()).filter(Boolean);
+      if (parts.length > 0) {
+        foundRole = parts[0];
+        break;
+      }
     }
   }
 
+  const lower = (resumeText || "").toLowerCase();
+  if (!foundRole) {
+    const summaryMatch = resumeText.match(/\b([A-Z][a-zA-Z\s]{3,35}(?:Engineer|Scientist|Biologist|Developer))\s+with\s+\d+\s+years/);
+    if (summaryMatch) {
+      foundRole = summaryMatch[1].trim();
+    }
+  }
+
+  if (!foundRole) {
+    for (const r of roles) {
+      if (lower.includes(r.toLowerCase())) {
+        foundRole = r;
+        break;
+      }
+    }
+  }
+
+  foundRole = foundRole || "Bioinformatics Engineer";
   const foundSkills = skills.filter(s => lower.includes(s.toLowerCase()));
   roleEl.innerText = foundRole;
-  skillsEl.innerText = foundSkills.length > 0 ? foundSkills.join(", ") : "General Tech Stack";
+  skillsEl.innerText = foundSkills.length > 0 ? foundSkills.join(", ") : "Python, Machine Learning, Bioinformatics";
 }
 
 async function saveBlacklist() {

@@ -40,10 +40,10 @@ def fill_template(
     target_titles: List[str] = user_config.get("target_titles") or []
     skills: List[str] = user_config.get("skills") or []
 
-    my_role = target_titles[0] if target_titles else resume_info["primary_role"]
-    active_skills = skills if skills else resume_info["skills"]
-    top_skill = active_skills[0] if active_skills else "software development"
-    second_skill = active_skills[1] if len(active_skills) > 1 else "cloud systems"
+    my_role = resume_info.get("primary_role") or (target_titles[0] if target_titles else "Bioinformatics Engineer")
+    active_skills = resume_info.get("skills") or skills
+    top_skill = active_skills[0] if active_skills else "Python"
+    second_skill = active_skills[1] if len(active_skills) > 1 else "Machine Learning"
 
     # Contextual fallback for company
     company_replacement = company if company else "your team"
