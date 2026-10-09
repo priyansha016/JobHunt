@@ -1,0 +1,320 @@
+/* LinkedIn JobHunt Profiler Widget Styles */
+
+#jobhunt-profiler-widget {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 350px;
+  max-height: calc(100vh - 100px);
+  background: #111827;
+  color: #f3f4f6;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  z-index: 9999999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.25s ease-in-out;
+}
+
+#jobhunt-profiler-widget.minimized {
+  width: 54px;
+  height: 54px;
+  border-radius: 27px;
+  cursor: pointer;
+}
+
+#jobhunt-profiler-widget.minimized .jhp-body,
+#jobhunt-profiler-widget.minimized .jhp-footer {
+  display: none !important;
+}
+
+#jobhunt-profiler-widget.minimized .jhp-header-title {
+  display: none;
+}
+
+/* Header */
+.jhp-header {
+  padding: 12px 16px;
+  background: #1f2937;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jhp-header-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.jhp-toggle-btn {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.jhp-toggle-btn:hover {
+  background: #374151;
+  color: #fff;
+}
+
+/* Body */
+.jhp-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Score Card */
+.jhp-score-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #1f2937;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #2d3748;
+}
+
+.jhp-score-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.jhp-score-circle.high {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+.jhp-score-circle.medium {
+  background: linear-gradient(135deg, #d97706, #f59e0b);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+.jhp-score-circle.low {
+  background: linear-gradient(135deg, #4b5563, #6b7280);
+}
+
+.jhp-score-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.jhp-persona-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jhp-persona-badge.recruiter {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.jhp-persona-badge.manager {
+  background: #8b5cf6;
+  color: #ffffff;
+}
+
+.jhp-persona-badge.peer {
+  background: #0ea5e9;
+  color: #ffffff;
+}
+
+.jhp-persona-badge.other {
+  background: #4b5563;
+  color: #e5e7eb;
+}
+
+.jhp-name-headline {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.3;
+}
+
+/* Rationale */
+.jhp-rationale-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jhp-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.jhp-rationale-list {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: #d1d5db;
+  line-height: 1.4;
+}
+
+.jhp-rationale-list li {
+  margin-bottom: 4px;
+}
+
+/* Connection Note */
+.jhp-note-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.jhp-note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.jhp-template-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.jhp-template-select {
+  flex: 1;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #93c5fd;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 5px 8px;
+  outline: none;
+  cursor: pointer;
+}
+
+.jhp-template-select:focus {
+  border-color: #60a5fa;
+}
+
+.jhp-char-counter {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+}
+
+.jhp-char-counter.limit-warn {
+  color: #ef4444;
+}
+
+.jhp-note-textarea {
+  width: 100%;
+  height: 90px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  color: #f8fafc;
+  padding: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.jhp-note-textarea:focus {
+  outline: none;
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 1px #60a5fa;
+}
+
+/* Buttons */
+.jhp-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.jhp-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.jhp-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.jhp-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.jhp-btn-secondary {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+.jhp-btn-secondary:hover {
+  background: #4b5563;
+}
+
+.jhp-btn-success {
+  background: #059669;
+  color: #ffffff;
+}
+
+.jhp-btn-success:hover {
+  background: #047857;
+}
+
+/* Footer */
+.jhp-footer {
+  padding: 8px 16px;
+  background: #1f2937;
+  border-top: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.jhp-status-tag {
+  color: #10b981;
+  font-weight: 600;
+}

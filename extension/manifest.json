@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn JobHunt Profiler & Cleanup (DuckDB + Laya)",
+  "version": "1.0.0",
+  "description": "AI-powered LinkedIn profile matcher, personalized connection note generator, and network cleanup manager using Laya and DuckDB.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "http://127.0.0.1:8765/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.linkedin.com/*"
+      ],
+      "js": [
+        "content/profiler.js",
+        "content/cleanup.js"
+      ],
+      "css": [
+        "content/profiler.css",
+        "content/cleanup.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}

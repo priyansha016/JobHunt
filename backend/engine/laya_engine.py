@@ -1,0 +1,265 @@
+"""
+Laya Decision Engine for LinkedIn Profiling & Connection Cleanup.
+Direct Resume-to-Profile Comparison using NandhaKishorM/laya:
+- No manual target role needed: compares LinkedIn profile directly against user's resume text.
+- Auto-extracts candidate role & top skills from resume text.
+- Laya predicts: Persona, Relevance (noul), and Match Level (score).
+- Handles cleanup decisions (KEEP, UNFOLLOW, REMOVE).
+"""
+
+import os
+import re
+import threading
+from typing import Dict, Any, List, Tuple
+
+_LAYA_AGENT = None
+_LAYA_LOADING = False
+_LOCK = threading.Lock()
+
+
+def _ensure_laya_loaded():
+    global _LAYA_AGENT, _LAYA_LOADING
+    if _LAYA_AGENT is not None or _LAYA_LOADING:
+        return
+
+    def _loader():
+        global _LAYA_AGENT, _LAYA_LOADING
+        with _LOCK:
+            _LAYA_LOADING = True
+        try:
+            import laya
+            agent = laya.load("typed-decisions")
+            with _LOCK:
+                _LAYA_AGENT = agent
+                _LAYA_LOADING = False
+            print("[LayaEngine] Laya agent loaded successfully.")
+        except Exception as e:
+            with _LOCK:
+                _LAYA_LOADING = False
+            print(f"[LayaEngine] Laya agent background load note: {e}")
+
+    thread = threading.Thread(target=_loader, daemon=True)
+    thread.start()
+
+
+# Common tech titles and skills dictionary for quick resume extraction
+TECH_ROLES = [
+    "Staff Software Engineer", "Principal Software Engineer", "Lead Software Engineer",
+    "Senior Software Engineer", "Senior Full Stack Engineer", "Senior Backend Engineer",
+    "Senior Frontend Engineer", "Software Engineer", "Full Stack Developer",
+    "Full Stack Engineer", "Backend Developer", "Backend Engineer", "Frontend Developer",
+    "Frontend Engineer", "DevOps Engineer", "Site Reliability Engineer", "Platform Engineer",
+    "Cloud Engineer", "Data Engineer", "Machine Learning Engineer", "AI Engineer",
+    "Engineering Manager", "Technical Lead", "Solutions Architect", "Systems Engineer"
+]
+
+COMMON_SKILLS = [
+    "Python", "JavaScript", "TypeScript", "React", "Node.js", "FastAPI", "Django", "Flask",
+    "Go", "Golang", "Rust", "Java", "C++", "C#", "SQL", "PostgreSQL", "MySQL", "MongoDB",
+    "Redis", "Docker", "Kubernetes", "AWS", "Azure", "GCP", "GraphQL", "REST APIs",
+    "Microservices", "Kafka", "Git", "Terraform", "Next.js", "Vue", "Tailwind", "PyTorch"
+]
+
+
+def extract_resume_profile(resume_text: str) -> Dict[str, Any]:
+    """
+    Auto-extracts primary title and skills directly from resume text.
+    No manual target roles needed!
+    """
+    if not resume_text:
+        return {
+            "primary_role": "Software Engineer",
+            "skills": ["Full Stack", "Python", "Cloud Architecture"]
+        }
+
+    resume_lower = resume_text.lower()
+
+    # 1. Detect role
+    detected_role = "Software Engineer"
+    for role in TECH_ROLES:
+        if role.lower() in resume_lower:
+            detected_role = role
+            break
+
+    # 2. Detect skills
+    detected_skills = []
+    for skill in COMMON_SKILLS:
+        pattern = r'\b' + re.escape(skill.lower()) + r'\b'
+        if re.search(pattern, resume_lower):
+            detected_skills.append(skill)
+
+    if not detected_skills:
+        detected_skills = ["Software Engineering", "Full Stack Development"]
+
+    return {
+        "primary_role": detected_role,
+        "skills": detected_skills
+    }
+
+
+class LayaEngine:
+    def __init__(self):
+        _ensure_laya_loaded()
+
+    def is_model_ready(self) -> bool:
+        return _LAYA_AGENT is not None
+
+    def get_agent(self):
+        global _LAYA_AGENT
+        if _LAYA_AGENT is None:
+            try:
+                import laya
+                _LAYA_AGENT = laya.load("typed-decisions")
+            except Exception as e:
+                print(f"[LayaEngine] get_agent error: {e}")
+        return _LAYA_AGENT
+
+    def classify_persona(self, headline: str, about: str, company: str) -> str:
+        text = f"{headline} {company} {about}".lower()
+        if any(k in text for k in ["recruiter", "talent acquisition", "sourcer", "headhunter", "talent partner", "staffing", "hiring"]):
+            return "Recruiter / Talent Partner"
+        if any(k in text for k in ["engineering manager", "director of engineering", "vp engineering", "cto", "tech lead", "head of engineering"]):
+            return "Hiring Manager / Tech Lead"
+        if any(k in text for k in ["software engineer", "developer", "full stack", "backend", "frontend", "sde"]):
+            return "Peer / Potential Referral"
+        return "Other / General"
+
+    def evaluate_profile(self, profile: Dict[str, Any], user_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Directly compares candidate's Resume against LinkedIn profile.
+        Uses Laya for System 1 Persona, Relevance, and Fit Level.
+        """
+        resume_text = (user_config.get("resume_text") or "").strip()
+        resume_info = extract_resume_profile(resume_text)
+
+        headline = profile.get("headline", "")
+        company = profile.get("current_company", "")
+        about = profile.get("about", "")
+        profile_name = profile.get("name", "LinkedIn Member")
+        profile_summary = f"{profile_name} - {headline} at {company}. {about[:300]}"
+
+        # Base persona from text clues
+        persona = self.classify_persona(headline, about, company)
+        match_score = 65.0
+        rationale = []
+
+        # 1. Run Laya System 1 Inference
+        agent = self.get_agent()
+        if agent is not None:
+            try:
+                questions = {
+                    "persona": {
+                        "type": "choice",
+                        "instructions": "What is the primary professional persona of this LinkedIn profile?",
+                        "criteria": ["recruiter", "engineering_manager", "software_peer", "unrelated"]
+                    },
+                    "is_relevant": {
+                        "type": "noul",
+                        "instructions": "Is this LinkedIn profile relevant to connect with given the candidate's resume?"
+                    },
+                    "match_level": {
+                        "type": "score",
+                        "instructions": "Rate the career relevance between this profile and candidate resume.",
+                        "criteria": ["irrelevant", "low", "medium", "high", "top_tier"]
+                    }
+                }
+
+                state = f"Candidate Resume:\n{resume_text[:1200] or 'Software Engineer with experience in Python and cloud systems.'}\n\nLinkedIn Profile:\n{profile_summary}"
+                prediction = agent.predict(state, questions)
+                answers = prediction.get("answers", {})
+
+                # Map Persona
+                raw_persona = answers.get("persona", {}).get("choice", "software_peer")
+                if raw_persona == "recruiter":
+                    persona = "Recruiter / Talent Partner"
+                elif raw_persona == "engineering_manager":
+                    persona = "Hiring Manager / Tech Lead"
+                elif raw_persona == "software_peer":
+                    persona = "Peer / Potential Referral"
+                else:
+                    persona = "Other / General"
+
+                # Calculate Score from Laya match_level & relevance
+                score_val = float(answers.get("match_level", {}).get("score", 2.0)) # 0 to 4
+                is_rel_prob = float(answers.get("is_relevant", {}).get("noul", 0.5)) # 0.0 to 1.0
+
+                # Scale to 0-100: baseline + score_val * 15 + is_rel_prob * 20
+                match_score = round(min(98.0, max(20.0, 25.0 + (score_val * 12.0) + (is_rel_prob * 25.0))), 1)
+
+            except Exception as e:
+                print(f"[LayaEngine] Model inference note: {e}")
+
+        # 2. Check overlap between Resume Skills and Profile for clear rationale
+        combined_profile_text = f"{headline} {company} {about}".lower()
+        shared_skills = []
+        for s in resume_info["skills"]:
+            if re.search(r'\b' + re.escape(s.lower()) + r'\b', combined_profile_text):
+                shared_skills.append(s)
+
+        if shared_skills:
+            rationale.append(f"Shared technical domain: {', '.join(shared_skills[:4])}")
+
+        if company:
+            rationale.append(f"Company: {company}")
+
+        if persona == "Recruiter / Talent Partner":
+            rationale.append("Talent Recruiter with active tech hiring visibility")
+        elif persona == "Hiring Manager / Tech Lead":
+            rationale.append("Engineering Manager / Team Lead")
+        else:
+            rationale.append(f"Relevant tech peer in {resume_info['primary_role']}")
+
+        return {
+            "persona": persona,
+            "match_score": match_score,
+            "rationale": rationale,
+            "detected_role": resume_info["primary_role"],
+            "detected_skills": resume_info["skills"]
+        }
+
+    def evaluate_cleanup_candidate(self, connection: Dict[str, Any], user_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Evaluates an existing connection for cleanup / unfollow.
+        """
+        headline = (connection.get("headline") or "").lower()
+        name = connection.get("name") or "Unknown"
+        blacklist = [b.lower() for b in (user_config.get("cleanup_blacklist") or [])]
+
+        flag_reason = None
+        action = "KEEP"
+
+        # Check blacklist
+        for bad_word in blacklist:
+            if bad_word and bad_word in headline:
+                flag_reason = f"Matches blacklist keyword: '{bad_word}'"
+                action = "UNFOLLOW"
+                break
+
+        # Check common spammy or irrelevant patterns
+        if not flag_reason:
+            spam_triggers = [
+                ("crypto", "Crypto / Web3 speculative promoter"),
+                ("forex", "Forex trading promoter"),
+                ("lead generation", "Lead generation / agency outreach"),
+                ("appointment setter", "Appointment setter"),
+                ("affiliate marketer", "Affiliate marketing sales"),
+                ("dropshipping", "E-commerce dropshipping"),
+                ("financial advisor", "Financial sales advisor")
+            ]
+            for kw, reason in spam_triggers:
+                if kw in headline:
+                    flag_reason = reason
+                    action = "UNFOLLOW"
+                    break
+
+        return {
+            "profile_url": connection.get("profile_url", ""),
+            "name": name,
+            "headline": connection.get("headline", ""),
+            "action": action,
+            "flag_reason": flag_reason,
+            "is_flagged": action != "KEEP"
+        }
+
+
+engine = LayaEngine()

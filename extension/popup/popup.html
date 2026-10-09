@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LinkedIn JobHunt Profiler</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="popup-title">
+        <span>⚡ JobHunt Profiler</span>
+      </div>
+      <div class="status-badge offline" id="backend-status">
+        ● Connecting...
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="popup-tabs">
+      <button class="tab-btn active" data-tab="metrics">Metrics</button>
+      <button class="tab-btn" data-tab="templates">Templates</button>
+      <button class="tab-btn" data-tab="targets">Goals</button>
+      <button class="tab-btn" data-tab="cleanup">Cleanup</button>
+      <button class="tab-btn" data-tab="history">History</button>
+    </div>
+
+    <!-- Tab 1: Metrics -->
+    <div class="tab-content active" id="tab-metrics">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <span class="stat-label">Evaluated</span>
+          <span class="stat-value" id="stat-total">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Avg Match</span>
+          <span class="stat-value highlight" id="stat-avg">0%</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Priority Fit</span>
+          <span class="stat-value" id="stat-priority">0</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Notes Sent</span>
+          <span class="stat-value highlight" id="stat-sent">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card" style="margin-bottom: 10px;">
+        <span class="stat-label">Network Cleanup</span>
+        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px;">
+          <span>Unfollowed: <strong id="stat-unfollowed" style="color: #fbbf24;">0</strong></span>
+          <span>Removed: <strong id="stat-removed" style="color: #f87171;">0</strong></span>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: #9ca3af; text-align: center; margin-top: 8px;">
+        Data persisted in <code>data/jobhunt.duckdb</code>
+      </div>
+    </div>
+
+    <!-- Tab: Templates -->
+    <div class="tab-content" id="tab-templates">
+      <div id="templates-list-container" style="margin-bottom: 14px;">
+        <!-- Populated by JS -->
+      </div>
+
+      <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 12px;">
+        <div style="font-weight: 700; font-size: 12px; color: #60a5fa; margin-bottom: 8px;">➕ Add / Edit Template</div>
+        <div class="form-group">
+          <label class="form-label">Template Title</label>
+          <input type="text" class="form-input" id="tmpl-title" placeholder="e.g. Direct Tech Pitch">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Persona</label>
+          <select class="form-input" id="tmpl-persona">
+            <option value="Recruiter / Talent Partner">Recruiter / Talent Partner</option>
+            <option value="Hiring Manager / Tech Lead">Hiring Manager / Tech Lead</option>
+            <option value="Peer / Potential Referral">Peer / Potential Referral</option>
+            <option value="Other / General">Other / General</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Template Text (&lt;300 chars)</label>
+          <textarea class="form-textarea" id="tmpl-text" style="height: 75px;" placeholder="Hi {first_name}, noticed you hire for tech at {company}. I'm a {my_role} in {top_skill}..."></textarea>
+          <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">
+            Variables: <code>{first_name}</code>, <code>{company}</code>, <code>{my_role}</code>, <code>{top_skill}</code>, <code>{second_skill}</code>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; margin: 6px 0 10px 0;">
+          <input type="checkbox" id="tmpl-is-default">
+          <label for="tmpl-is-default" style="font-size: 11px; color: #d1d5db;">Set as Default for this Persona</label>
+        </div>
+        <button class="save-btn" id="save-template-btn">Save Template to DuckDB</button>
+        <div id="template-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
+      </div>
+    </div>
+
+    <!-- Tab 2: My Resume -->
+    <div class="tab-content" id="tab-targets">
+      <div class="form-group">
+        <label class="form-label">Paste Your Resume / Bio</label>
+        <textarea class="form-textarea" id="cfg-resume" style="height: 150px; font-family: monospace; font-size: 11px;" placeholder="Paste your full resume text here (experience, skills, summary)... Laya will compare profiles directly against this resume!"></textarea>
+      </div>
+      <button class="save-btn" id="save-targets-btn">Save & Analyze Resume</button>
+      <div id="targets-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
+
+      <div id="resume-analysis-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-top: 12px;">
+        <div style="font-weight: 700; font-size: 11px; color: #60a5fa; text-transform: uppercase;">✨ Auto-Detected From Resume</div>
+        <div style="font-size: 12px; margin-top: 4px;">Role: <strong id="detected-role" style="color: #34d399;">Software Engineer</strong></div>
+        <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Skills: <span id="detected-skills">Python, Cloud</span></div>
+      </div>
+    </div>
+
+    <!-- Tab 3: Cleanup Rules -->
+    <div class="tab-content" id="tab-cleanup">
+      <div class="form-group">
+        <label class="form-label">Spam / Blacklist Keywords (comma-separated)</label>
+        <textarea class="form-textarea" id="cfg-blacklist" style="height: 110px;" placeholder="Crypto, Forex, Lead Gen, Financial Advisor, Dropshipping, SEO Specialist"></textarea>
+      </div>
+      <p style="font-size: 11px; color: #9ca3af; line-height: 1.4; margin: 0 0 10px 0;">
+        Profiles matching any of these keywords will be flagged on your LinkedIn Connections page so you can safely unfollow or disconnect.
+      </p>
+      <button class="save-btn" id="save-cleanup-btn">Save Blacklist Rules</button>
+      <div id="cleanup-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
+    </div>
+
+    <!-- Tab 4: History -->
+    <div class="tab-content" id="tab-history">
+      <div id="history-list">
+        <div style="font-size: 12px; color: #9ca3af; text-align: center; padding: 20px 0;">
+          No evaluated profiles yet. Browse LinkedIn profiles to begin!
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

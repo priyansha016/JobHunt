@@ -1,0 +1,275 @@
+const BACKEND_URL = "http://127.0.0.1:8765";
+
+document.addEventListener("DOMContentLoaded", () => {
+  setupTabs();
+  checkBackendHealth();
+  loadMetrics();
+  loadConfig();
+  loadTemplates();
+  loadHistory();
+
+  document.getElementById("save-targets-btn").addEventListener("click", saveTargets);
+  document.getElementById("save-cleanup-btn").addEventListener("click", saveBlacklist);
+  document.getElementById("save-template-btn").addEventListener("click", saveTemplate);
+});
+
+function setupTabs() {
+  const tabBtns = document.querySelectorAll(".tab-btn");
+  tabBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabBtns.forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+
+      btn.classList.add("active");
+      const targetId = `tab-${btn.dataset.tab}`;
+      const targetContent = document.getElementById(targetId);
+      if (targetContent) targetContent.classList.add("active");
+
+      if (btn.dataset.tab === "metrics") loadMetrics();
+      if (btn.dataset.tab === "templates") loadTemplates();
+      if (btn.dataset.tab === "history") loadHistory();
+    });
+  });
+}
+
+async function checkBackendHealth() {
+  const badge = document.getElementById("backend-status");
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/health`);
+    if (res.ok) {
+      const data = await res.json();
+      badge.className = "status-badge online";
+      badge.innerText = data.laya_model_ready ? "● Laya Online" : "● DuckDB Online";
+    } else {
+      throw new Error();
+    }
+  } catch {
+    badge.className = "status-badge offline";
+    badge.innerText = "● Backend Offline";
+  }
+}
+
+async function loadMetrics() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/stats`);
+    if (!res.ok) return;
+    const stats = await res.json();
+
+    document.getElementById("stat-total").innerText = stats.total_profiles_evaluated || 0;
+    document.getElementById("stat-avg").innerText = `${stats.avg_match_score || 0}%`;
+    document.getElementById("stat-priority").innerText = stats.high_priority_matches || 0;
+    document.getElementById("stat-sent").innerText = stats.notes_sent || 0;
+
+    if (stats.cleanup_stats) {
+      document.getElementById("stat-unfollowed").innerText = stats.cleanup_stats.unfollowed || 0;
+      document.getElementById("stat-removed").innerText = stats.cleanup_stats.removed || 0;
+    }
+  } catch (e) {
+    console.warn("Could not load metrics:", e);
+  }
+}
+
+async function loadConfig() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/config`);
+    if (!res.ok) return;
+    const cfg = await res.json();
+
+    const resumeVal = cfg.resume_text || "";
+    document.getElementById("cfg-resume").value = resumeVal;
+    document.getElementById("cfg-blacklist").value = (cfg.cleanup_blacklist || []).join(", ");
+    updateDetectedResumeStats(resumeVal);
+  } catch (e) {
+    console.warn("Could not load config:", e);
+  }
+}
+
+async function loadTemplates() {
+  const container = document.getElementById("templates-list-container");
+  if (!container) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/templates`);
+    if (!res.ok) return;
+    const templates = await res.json();
+
+    if (templates.length === 0) {
+      container.innerHTML = `<div style="font-size: 11px; color: #9ca3af; text-align: center;">No templates found.</div>`;
+      return;
+    }
+
+    container.innerHTML = templates.map(t => `
+      <div style="background: #1f2937; border: 1px solid #374151; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <div style="font-weight: 700; color: #60a5fa; font-size: 12px;">
+            ${t.title} ${t.is_default ? '<span style="font-size: 9px; background: #059669; color: #fff; padding: 1px 5px; border-radius: 4px; margin-left: 4px;">DEFAULT</span>' : ''}
+          </div>
+          <button class="delete-tmpl-btn" data-id="${t.id}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 13px;">✕</button>
+        </div>
+        <div style="font-size: 10px; color: #9ca3af; margin-bottom: 4px;">Persona: <strong>${t.persona}</strong></div>
+        <div style="font-size: 11px; color: #d1d5db; line-height: 1.3; background: #111827; padding: 6px 8px; border-radius: 4px;">${t.template_text}</div>
+      </div>
+    `).join("");
+
+    container.querySelectorAll(".delete-tmpl-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const tid = btn.dataset.id;
+        await fetch(`${BACKEND_URL}/api/templates/${tid}`, { method: "DELETE" });
+        loadTemplates();
+      });
+    });
+  } catch (e) {
+    console.warn("Could not load templates:", e);
+  }
+}
+
+async function saveTemplate() {
+  const title = document.getElementById("tmpl-title").value.trim();
+  const persona = document.getElementById("tmpl-persona").value;
+  const text = document.getElementById("tmpl-text").value.trim();
+  const isDefault = document.getElementById("tmpl-is-default").checked;
+  const feedback = document.getElementById("template-feedback");
+
+  if (!title || !text) {
+    feedback.innerText = "Please provide both title and template text.";
+    feedback.style.color = "#ef4444";
+    return;
+  }
+
+  const id = `tmpl_${Date.now()}`;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: id,
+        persona: persona,
+        title: title,
+        template_text: text,
+        is_default: isDefault
+      })
+    });
+    if (res.ok) {
+      feedback.innerText = "Template saved!";
+      feedback.style.color = "#34d399";
+      document.getElementById("tmpl-title").value = "";
+      document.getElementById("tmpl-text").value = "";
+      document.getElementById("tmpl-is-default").checked = false;
+      loadTemplates();
+      setTimeout(() => { feedback.innerText = ""; }, 2000);
+    }
+  } catch (e) {
+    feedback.innerText = "Failed to save template.";
+    feedback.style.color = "#ef4444";
+  }
+}
+
+async function saveTargets() {
+  const resume = document.getElementById("cfg-resume").value;
+  const feedback = document.getElementById("targets-feedback");
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        resume_text: resume
+      })
+    });
+    if (res.ok) {
+      updateDetectedResumeStats(resume);
+      feedback.innerText = "Resume saved! Laya is ready for profiling.";
+      setTimeout(() => { feedback.innerText = ""; }, 2500);
+    }
+  } catch {
+    feedback.innerText = "Error saving. Is backend running?";
+  }
+}
+
+function updateDetectedResumeStats(resumeText) {
+  const roleEl = document.getElementById("detected-role");
+  const skillsEl = document.getElementById("detected-skills");
+  if (!roleEl || !skillsEl) return;
+
+  const roles = [
+    "Staff Software Engineer", "Senior Software Engineer", "Senior Full Stack Engineer",
+    "Senior Backend Engineer", "Software Engineer", "Full Stack Engineer", "Backend Engineer"
+  ];
+  const skills = [
+    "Python", "TypeScript", "React", "FastAPI", "Docker", "Kubernetes", "AWS", "SQL", "PostgreSQL"
+  ];
+
+  const lower = (resumeText || "").toLowerCase();
+  let foundRole = "Software Engineer";
+  for (const r of roles) {
+    if (lower.includes(r.toLowerCase())) {
+      foundRole = r;
+      break;
+    }
+  }
+
+  const foundSkills = skills.filter(s => lower.includes(s.toLowerCase()));
+  roleEl.innerText = foundRole;
+  skillsEl.innerText = foundSkills.length > 0 ? foundSkills.join(", ") : "General Tech Stack";
+}
+
+async function saveBlacklist() {
+  const blacklist = parseCsv(document.getElementById("cfg-blacklist").value);
+  const feedback = document.getElementById("cleanup-feedback");
+
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/config`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        cleanup_blacklist: blacklist
+      })
+    });
+    if (res.ok) {
+      feedback.innerText = "Blacklist rules saved to DuckDB!";
+      setTimeout(() => { feedback.innerText = ""; }, 2000);
+    }
+  } catch {
+    feedback.innerText = "Error saving. Is backend running?";
+  }
+}
+
+async function loadHistory() {
+  const container = document.getElementById("history-list");
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/profiles?limit=20`);
+    if (!res.ok) return;
+    const profiles = await res.json();
+
+    if (profiles.length === 0) {
+      container.innerHTML = `
+        <div style="font-size: 12px; color: #9ca3af; text-align: center; padding: 20px 0;">
+          No evaluated profiles yet. Browse LinkedIn to start profiling!
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = profiles.map(p => {
+      const score = Math.round(p.match_score);
+      const scoreClass = score >= 75 ? "high" : score >= 50 ? "medium" : "low";
+      return `
+        <div class="profile-item">
+          <div>
+            <div class="profile-item-name">${p.name}</div>
+            <div class="profile-item-headline">${p.headline || p.current_company || "LinkedIn Member"}</div>
+          </div>
+          <span class="score-badge ${scoreClass}">${score}%</span>
+        </div>
+      `;
+    }).join("");
+  } catch (e) {
+    console.warn("Could not load history:", e);
+  }
+}
+
+function parseCsv(str) {
+  if (!str) return [];
+  return str.split(",")
+    .map(s => s.trim())
+    .filter(s => s.length > 0);
+}
