@@ -20,6 +20,7 @@
     <!-- Navigation Tabs -->
     <div class="popup-tabs">
       <button class="tab-btn active" data-tab="metrics">Metrics</button>
+      <button class="tab-btn" data-tab="autopilot">Auto-Pilot</button>
       <button class="tab-btn" data-tab="matcher">Matcher</button>
       <button class="tab-btn" data-tab="templates">Templates</button>
       <button class="tab-btn" data-tab="targets">Resume</button>
@@ -59,6 +60,41 @@
       <div style="font-size: 11px; color: #9ca3af; text-align: center; margin-top: 8px;">
         Data persisted in <code>data/jobhunt.duckdb</code>
       </div>
+    </div>
+
+    <!-- Tab: Auto-Pilot Search & Network Expansion -->
+    <div class="tab-content" id="tab-autopilot">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; line-height: 1.4;">
+        Autonomous network booster. Searches for target recruiters &amp; technical leads, runs <strong>Laya System 1 evaluation</strong> on each candidate, and connects with tailored pitches.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Search Query / Target Profiles</label>
+        <input type="text" class="form-input" id="autopilot-query" value="Bioinformatics Recruiter" placeholder="e.g. Bioinformatics Recruiter, Genomics Hiring Manager">
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px;">Quick Presets:</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+          <button class="autopilot-preset-btn" data-q="Bioinformatics Recruiter">🧬 Bio Recruiter</button>
+          <button class="autopilot-preset-btn" data-q="Computational Biology Manager">🔬 Comp Bio Manager</button>
+          <button class="autopilot-preset-btn" data-q="Genomics Scientist Illumina">🧪 Genomics Scientist</button>
+          <button class="autopilot-preset-btn" data-q="Machine Learning Recruiter">🤖 ML Recruiter</button>
+        </div>
+      </div>
+
+      <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
+        <div style="font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 6px;">🛡️ Account Safety Architecture</div>
+        <ul style="margin: 0; padding-left: 16px; font-size: 11px; color: #9ca3af; line-height: 1.5;">
+          <li>Automated 7–14 second human jitter delays</li>
+          <li>Filters out low-relevance profiles (&lt;65% score)</li>
+          <li>Enforces strict &le;300 character note limit</li>
+          <li>Capped at 15 invites/day to prevent LinkedIn bans</li>
+        </ul>
+      </div>
+
+      <button class="save-btn" id="launch-autopilot-btn" style="background: #2563eb;">🚀 Launch Search &amp; Open Auto-Pilot HUD</button>
+      <div id="autopilot-feedback" style="font-size: 11px; color: #34d399; margin-top: 6px; text-align: center;"></div>
     </div>
 
     <!-- Tab: Direct Profile Matcher (PDF or Text) -->

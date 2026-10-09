@@ -9,6 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadHistory();
   setupResumePdfUpload();
   setupDirectMatcher();
+  setupAutopilotLaunchpad();
 
   document.getElementById("save-targets-btn").addEventListener("click", saveTargets);
   document.getElementById("save-cleanup-btn").addEventListener("click", saveBlacklist);
@@ -576,3 +577,48 @@ function setupDirectMatcher() {
   }
 }
 
+function setupAutopilotLaunchpad() {
+  const queryInput = document.getElementById("autopilot-query");
+  const launchBtn = document.getElementById("launch-autopilot-btn");
+  const feedbackEl = document.getElementById("autopilot-feedback");
+  const presetBtns = document.querySelectorAll(".autopilot-preset-btn");
+
+  if (!launchBtn) return;
+
+  presetBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const q = btn.dataset.q;
+      if (q && queryInput) {
+        queryInput.value = q;
+        btn.style.borderColor = "#3b82f6";
+        setTimeout(() => {
+          btn.style.borderColor = "#374151";
+        }, 300);
+      }
+    });
+  });
+
+  launchBtn.addEventListener("click", () => {
+    const query = queryInput ? queryInput.value.trim() : "";
+    if (!query) {
+      if (feedbackEl) {
+        feedbackEl.style.color = "#f87171";
+        feedbackEl.innerText = "Please enter search keywords or select a preset.";
+      }
+      return;
+    }
+
+    const searchUrl = `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(query)}&origin=SWITCH_SEARCH_VERTICAL`;
+    
+    if (feedbackEl) {
+      feedbackEl.style.color = "#34d399";
+      feedbackEl.innerText = "Opening LinkedIn search with Auto-Pilot HUD...";
+    }
+
+    if (typeof chrome !== "undefined" && chrome.tabs && chrome.tabs.create) {
+      chrome.tabs.create({ url: searchUrl });
+    } else {
+      window.open(searchUrl, "_blank");
+    }
+  });
+}

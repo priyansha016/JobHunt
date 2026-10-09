@@ -1,0 +1,280 @@
+/* JobHunt Auto-Pilot HUD & Search Automation Styles */
+
+#jobhunt-autopilot-hud {
+  position: fixed;
+  top: 75px;
+  right: 20px;
+  width: 320px;
+  background: #111827;
+  color: #f3f4f6;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  z-index: 999999;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  transition: all 0.25s ease;
+  overflow: hidden;
+}
+
+#jobhunt-autopilot-hud.collapsed .hud-body {
+  display: none;
+}
+
+.hud-header {
+  padding: 12px 14px;
+  background: #1f2937;
+  border-bottom: 1px solid #374151;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.hud-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hud-badge.idle {
+  background: #374151;
+  color: #9ca3af;
+}
+
+.hud-badge.running {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid #059669;
+  animation: pulse-hud 1.5s infinite;
+}
+
+.hud-badge.waiting {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid #d97706;
+}
+
+.hud-badge.paused {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid #dc2626;
+}
+
+@keyframes pulse-hud {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.hud-body {
+  padding: 12px 14px;
+}
+
+.hud-status-banner {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  font-size: 11.5px;
+  line-height: 1.4;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  color: #e2e8f0;
+}
+
+/* Counters Grid */
+.hud-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.hud-stat-box {
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  padding: 6px 4px;
+  text-align: center;
+}
+
+.hud-stat-num {
+  font-size: 14px;
+  font-weight: 800;
+  color: #60a5fa;
+  display: block;
+}
+
+.hud-stat-num.sent {
+  color: #34d399;
+}
+
+.hud-stat-num.skipped {
+  color: #9ca3af;
+}
+
+.hud-stat-lbl {
+  font-size: 9.5px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+/* Current Candidate Preview */
+.hud-target-card {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px dashed #475569;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+}
+
+.hud-target-name {
+  font-weight: 700;
+  font-size: 12px;
+  color: #f8fafc;
+}
+
+.hud-target-headline {
+  font-size: 10.5px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.hud-target-match {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+/* Controls */
+.hud-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.hud-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 6px;
+  border: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.hud-btn.start {
+  background: #2563eb;
+  color: white;
+}
+
+.hud-btn.start:hover {
+  background: #1d4ed8;
+}
+
+.hud-btn.pause {
+  background: #d97706;
+  color: white;
+}
+
+.hud-btn.stop {
+  background: #374151;
+  color: #f3f4f6;
+  border: 1px solid #4b5563;
+}
+
+.hud-btn.stop:hover {
+  background: #4b5563;
+}
+
+/* Settings Drawer */
+.hud-settings {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #374151;
+  display: none;
+  font-size: 11px;
+}
+
+.hud-settings.open {
+  display: block;
+}
+
+.hud-setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.hud-setting-input {
+  background: #1f2937;
+  border: 1px solid #4b5563;
+  color: white;
+  border-radius: 4px;
+  padding: 2px 6px;
+  width: 55px;
+  text-align: center;
+  font-size: 11px;
+}
+
+/* In-Page Card Highlight Badges */
+.jobhunt-eval-badge {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  z-index: 100;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.jobhunt-eval-badge.match-high {
+  background: #059669;
+  color: #ffffff;
+}
+
+.jobhunt-eval-badge.match-low {
+  background: #4b5563;
+  color: #d1d5db;
+}
+
+.jobhunt-card-processing {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px;
+}
+
+.jobhunt-card-connected {
+  outline: 2px solid #10b981 !important;
+  outline-offset: 2px;
+}
+
+.jobhunt-card-skipped {
+  opacity: 0.6;
+}
