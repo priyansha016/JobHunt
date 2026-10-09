@@ -103,18 +103,40 @@ def health_check():
 
 @app.get("/api/config")
 def get_config():
-    return db.get_user_config()
+    config = db.get_user_config()
+    resume_text = config.get("resume_text") or ""
+    if resume_text:
+        info = extract_resume_profile(resume_text)
+        config["detected_role"] = info.get("primary_role")
+        config["detected_skills"] = info.get("skills", [])
+    else:
+        config["detected_role"] = "Bioinformatics Engineer"
+        config["detected_skills"] = []
+    return config
 
 
 @app.post("/api/config")
 def update_config(payload: UserConfigUpdate):
-    return db.update_user_config(
+    skills_to_save = payload.skills
+    detected_role = "Bioinformatics Engineer"
+    detected_skills = []
+    if payload.resume_text:
+        info = extract_resume_profile(payload.resume_text)
+        detected_role = info.get("primary_role")
+        detected_skills = info.get("skills", [])
+        if skills_to_save is None:
+            skills_to_save = detected_skills
+
+    updated = db.update_user_config(
         resume_text=payload.resume_text,
         target_titles=payload.target_titles,
         target_companies=payload.target_companies,
-        skills=payload.skills,
+        skills=skills_to_save,
         cleanup_blacklist=payload.cleanup_blacklist
     )
+    updated["detected_role"] = detected_role
+    updated["detected_skills"] = detected_skills
+    return updated
 
 
 @app.post("/api/resume/upload-pdf")

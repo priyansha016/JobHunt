@@ -80,7 +80,15 @@ async function loadConfig() {
     const resumeVal = cfg.resume_text || "";
     document.getElementById("cfg-resume").value = resumeVal;
     document.getElementById("cfg-blacklist").value = (cfg.cleanup_blacklist || []).join(", ");
-    updateDetectedResumeStats(resumeVal);
+
+    if (cfg.detected_role) {
+      document.getElementById("detected-role").innerText = cfg.detected_role;
+      if (cfg.detected_skills && cfg.detected_skills.length > 0) {
+        document.getElementById("detected-skills").innerText = cfg.detected_skills.slice(0, 15).join(", ");
+      }
+    } else {
+      updateDetectedResumeStats(resumeVal);
+    }
   } catch (e) {
     console.warn("Could not load config:", e);
   }
@@ -178,7 +186,15 @@ async function saveTargets() {
       })
     });
     if (res.ok) {
-      updateDetectedResumeStats(resume);
+      const data = await res.json();
+      if (data.detected_role) {
+        document.getElementById("detected-role").innerText = data.detected_role;
+        if (data.detected_skills && data.detected_skills.length > 0) {
+          document.getElementById("detected-skills").innerText = data.detected_skills.slice(0, 15).join(", ");
+        }
+      } else {
+        updateDetectedResumeStats(resume);
+      }
       feedback.innerText = "Resume saved! Laya is ready for profiling.";
       setTimeout(() => { feedback.innerText = ""; }, 2500);
     }
@@ -209,12 +225,12 @@ function updateDetectedResumeStats(resumeText) {
   const lines = (resumeText || "").split("\n");
   let foundRole = null;
 
-  // Check for headline line with '·' or '|'
-  for (const line of lines.slice(0, 20)) {
+  // Check for headline line with '·' (and NOT colons ':' which belong to skill categories)
+  for (const line of lines.slice(0, 30)) {
     const trimmed = line.trim();
-    if ((trimmed.includes("·") || trimmed.includes("|")) && 
-        /(engineer|scientist|genomics|developer|biologist)/i.test(trimmed)) {
-      const parts = trimmed.split(/[·|]/).map(p => p.trim()).filter(Boolean);
+    if (trimmed.includes("·") && !trimmed.includes(":") && 
+        /\b(engineer|scientist|genomics|developer|biologist)\b/i.test(trimmed)) {
+      const parts = trimmed.split("·").map(p => p.trim()).filter(Boolean);
       if (parts.length > 0) {
         foundRole = parts[0];
         break;
