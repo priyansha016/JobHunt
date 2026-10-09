@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>LinkedIn JobHunt Profiler</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Network Booster</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -10,246 +11,106 @@
     <!-- Header -->
     <div class="popup-header">
       <div class="popup-title">
-        <span>⚡ JobHunt Profiler</span>
+        <span>🚀 Network Booster</span>
       </div>
       <div class="status-badge offline" id="backend-status">
         ● Connecting...
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
+    <!-- Navigation Tabs (Only 2 Tabs Focused on Network Growth) -->
     <div class="popup-tabs">
-      <button class="tab-btn active" data-tab="metrics">Metrics</button>
-      <button class="tab-btn" data-tab="autopilot">Auto-Pilot</button>
-      <button class="tab-btn" data-tab="matcher">Matcher</button>
-      <button class="tab-btn" data-tab="templates">Templates</button>
-      <button class="tab-btn" data-tab="targets">Resume</button>
-      <button class="tab-btn" data-tab="cleanup">Cleanup</button>
-      <button class="tab-btn" data-tab="history">History</button>
+      <button class="tab-btn active" data-tab="autopilot">🚀 Expand Network</button>
+      <button class="tab-btn" data-tab="history">📜 Sent Invites</button>
     </div>
 
-    <!-- Tab 1: Metrics -->
-    <div class="tab-content active" id="tab-metrics">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <span class="stat-label">Evaluated</span>
-          <span class="stat-value" id="stat-total">0</span>
+    <!-- Tab 1: Expand Network (Main Launchpad) -->
+    <div class="tab-content active" id="tab-autopilot">
+      <!-- Active Job Profile Target -->
+      <div class="targeting-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span style="font-size: 11px; color: #9ca3af; text-transform: uppercase; font-weight: 600;">Active Job Profile</span>
+          <span class="persona-badge" id="detected-role" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid #2563eb; font-size: 11px; padding: 2px 6px; border-radius: 4px; font-weight: 700;">Bioinformatics Engineer</span>
         </div>
-        <div class="stat-card">
-          <span class="stat-label">Avg Match</span>
-          <span class="stat-value highlight" id="stat-avg">0%</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Priority Fit</span>
-          <span class="stat-value" id="stat-priority">0</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-label">Notes Sent</span>
-          <span class="stat-value highlight" id="stat-sent">0</span>
+        <div id="detected-skills" style="font-size: 11px; color: #94a3b8; line-height: 1.3;">
+          Python, Nextflow, PyTorch, Genomics, RNA-Seq, AWS
         </div>
       </div>
 
-      <div class="stat-card" style="margin-bottom: 10px;">
-        <span class="stat-label">Network Cleanup</span>
-        <div style="display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px;">
-          <span>Unfollowed: <strong id="stat-unfollowed" style="color: #fbbf24;">0</strong></span>
-          <span>Removed: <strong id="stat-removed" style="color: #f87171;">0</strong></span>
+      <!-- Growth Velocity & Today's Cap -->
+      <div class="stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <div class="stat-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; text-align: center;">
+          <span class="stat-label" style="font-size: 10px; color: #9ca3af; text-transform: uppercase; display: block;">Today's Invites</span>
+          <span class="stat-value highlight" id="stat-sent-today" style="font-size: 18px; font-weight: 800; color: #34d399; margin-top: 2px; display: block;">0 / 15</span>
+        </div>
+        <div class="stat-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; text-align: center;">
+          <span class="stat-label" style="font-size: 10px; color: #9ca3af; text-transform: uppercase; display: block;">Total Sent</span>
+          <span class="stat-value" id="stat-sent" style="font-size: 18px; font-weight: 800; color: #60a5fa; margin-top: 2px; display: block;">0</span>
         </div>
       </div>
 
-      <div style="font-size: 11px; color: #9ca3af; text-align: center; margin-top: 8px;">
-        Data persisted in <code>data/jobhunt.duckdb</code>
-      </div>
-    </div>
-
-    <!-- Tab: Auto-Pilot Search & Network Expansion -->
-    <div class="tab-content" id="tab-autopilot">
-      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; line-height: 1.4;">
-        Autonomous network booster. Searches for target recruiters &amp; technical leads, runs <strong>Laya System 1 evaluation</strong> on each candidate, and connects with tailored pitches.
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Search Query / Target Profiles</label>
+      <!-- Search Query Input -->
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label class="form-label" style="font-size: 11px; font-weight: 600; color: #d1d5db; display: block; margin-bottom: 4px;">Target Keywords / Hiring Leads</label>
         <input type="text" class="form-input" id="autopilot-query" value="Bioinformatics Recruiter" placeholder="e.g. Bioinformatics Recruiter, Genomics Hiring Manager">
       </div>
 
+      <!-- Quick 1-Click Presets -->
       <div style="margin-bottom: 12px;">
-        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px;">Quick Presets:</div>
+        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 6px; font-weight: 600;">Fast Presets:</div>
         <div style="display: flex; flex-wrap: wrap; gap: 6px;">
           <button class="autopilot-preset-btn" data-q="Bioinformatics Recruiter">🧬 Bio Recruiter</button>
           <button class="autopilot-preset-btn" data-q="Computational Biology Manager">🔬 Comp Bio Manager</button>
-          <button class="autopilot-preset-btn" data-q="Genomics Scientist Illumina">🧪 Genomics Scientist</button>
+          <button class="autopilot-preset-btn" data-q="Genomics Scientist Illumina">🧪 Genomics Lead</button>
           <button class="autopilot-preset-btn" data-q="Machine Learning Recruiter">🤖 ML Recruiter</button>
+          <button class="autopilot-preset-btn" data-q="Bioinformatics Hiring Manager">💼 Bio Director</button>
         </div>
       </div>
 
+      <!-- Autonomous Safety Shield -->
       <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-bottom: 12px;">
-        <div style="font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 6px;">🛡️ Account Safety Architecture</div>
-        <ul style="margin: 0; padding-left: 16px; font-size: 11px; color: #9ca3af; line-height: 1.5;">
-          <li>Automated 7–14 second human jitter delays</li>
-          <li>Filters out low-relevance profiles (&lt;65% score)</li>
-          <li>Enforces strict &le;300 character note limit</li>
-          <li>Capped at 15 invites/day to prevent LinkedIn bans</li>
-        </ul>
+        <div style="font-size: 11px; font-weight: 700; color: #34d399; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+          <span>🛡️ Laya Autonomous Network Shield</span>
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; line-height: 1.4;">
+          Autonomously triages recruiters &amp; technical leads using <strong>Laya System 1 Decisions</strong>. Applies 7–14s human jitter and custom pitches strictly &le;300 chars.
+        </div>
       </div>
 
-      <button class="save-btn" id="launch-autopilot-btn" style="background: #2563eb;">🚀 Launch Search &amp; Open Auto-Pilot HUD</button>
+      <!-- Primary Action Button -->
+      <button class="save-btn" id="launch-autopilot-btn" style="background: #2563eb; font-size: 13px; font-weight: 700; padding: 10px; width: 100%; border-radius: 6px; border: none; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+        🚀 Launch Auto-Pilot on LinkedIn
+      </button>
       <div id="autopilot-feedback" style="font-size: 11px; color: #34d399; margin-top: 6px; text-align: center;"></div>
-    </div>
 
-    <!-- Tab: Direct Profile Matcher (PDF or Text) -->
-    <div class="tab-content" id="tab-matcher">
-      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
-        Compare any LinkedIn profile or candidate CV directly with your resume using Laya. Supports <strong>PDF upload</strong> or <strong>pasted text</strong>.
-      </div>
-
-      <!-- Mode Selector -->
-      <div class="sub-tab-group" style="display: flex; gap: 8px; margin-bottom: 10px;">
-        <button class="sub-tab-btn active" id="btn-mode-pdf">📄 Upload PDF</button>
-        <button class="sub-tab-btn" id="btn-mode-text">📝 Paste Text</button>
-      </div>
-
-      <!-- PDF Mode Container -->
-      <div id="matcher-pdf-container">
-        <div class="dropzone" id="matcher-pdf-dropzone">
-          <input type="file" id="matcher-pdf-input" accept=".pdf" style="display: none;">
-          <div style="font-size: 24px; margin-bottom: 4px;">📂</div>
-          <div style="font-weight: 600; font-size: 12px; color: #60a5fa;">Choose LinkedIn Profile or CV PDF</div>
-          <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Supports LinkedIn 'Save to PDF' &amp; resumes</div>
-          <div id="matcher-file-name" style="font-size: 11px; color: #34d399; margin-top: 6px; font-weight: 600;"></div>
+      <!-- Collapsible Resume Update Section (Neatly tucked away) -->
+      <div style="margin-top: 14px; border-top: 1px solid #374151; padding-top: 10px;">
+        <div id="toggle-resume-section" style="font-size: 11px; color: #60a5fa; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+          <span>📄 Update Resume CV (Optional)</span>
+          <span id="resume-toggle-arrow">▼</span>
         </div>
-      </div>
-
-      <!-- Text Mode Container -->
-      <div id="matcher-text-container" style="display: none;">
-        <div class="form-group">
-          <label class="form-label">Candidate Profile / Headline / Summary</label>
-          <textarea class="form-textarea" id="matcher-text-input" style="height: 110px;" placeholder="Paste LinkedIn profile info, headline, experience or bio text here..."></textarea>
-        </div>
-      </div>
-
-      <button class="save-btn" id="run-match-btn" style="margin-top: 10px;">Run Laya Match</button>
-      <div id="matcher-feedback" style="font-size: 11px; color: #60a5fa; margin-top: 6px; text-align: center;"></div>
-
-      <!-- Result Card -->
-      <div id="matcher-result-card" style="display: none; background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 12px; margin-top: 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <div id="matcher-res-name" style="font-weight: 700; font-size: 13px; color: #f3f4f6;">Candidate Name</div>
-          <div id="matcher-res-score" style="font-weight: 800; font-size: 13px; color: #10b981;">88% Match</div>
-        </div>
-        <div id="matcher-res-persona" class="persona-badge" style="display: inline-block; margin-bottom: 6px;">Recruiter</div>
-        <div id="matcher-res-headline" style="font-size: 11px; color: #9ca3af; margin-bottom: 8px;">Headline at Company</div>
-        
-        <!-- Laya System 1 Decision & Strategy -->
-        <div style="background: rgba(17, 24, 39, 0.8); border: 1px solid #374151; border-radius: 6px; padding: 6px 8px; margin-bottom: 8px; font-size: 11px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
-            <span style="color: #9ca3af;">Laya Decision:</span>
-            <span id="matcher-res-decision" style="font-weight: 700; color: #34d399;">🎯 MUST CONNECT</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: #94a3b8;">
-            <span>Strategy:</span>
-            <span id="matcher-res-strategy" style="color: #93c5fd;">Engineering Synergy</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #6b7280; margin-top: 2px;">
-            <span>Calibrated Confidence:</span>
-            <span id="matcher-res-confidence">88%</span>
+        <div id="resume-collapsible-body" style="display: none; margin-top: 8px;">
+          <div class="dropzone" id="resume-pdf-dropzone" style="border: 1px dashed #3b82f6; border-radius: 6px; padding: 12px; text-align: center; cursor: pointer; background: rgba(59, 130, 246, 0.05);">
+            <input type="file" id="resume-pdf-input" accept=".pdf" style="display: none;">
+            <div style="font-weight: 600; font-size: 11px; color: #60a5fa;">Drop new CV / Resume PDF here</div>
+            <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">Auto-extracts title &amp; domain skills</div>
+            <div id="resume-file-name" style="font-size: 10px; color: #34d399; margin-top: 4px;"></div>
           </div>
         </div>
-        
-        <div style="font-size: 11px; font-weight: 600; color: #60a5fa; margin-bottom: 4px;">Tailored Connection Note (&le;300 chars):</div>
-        <textarea class="form-textarea" id="matcher-res-note" style="height: 65px; font-size: 11px; margin-bottom: 6px;"></textarea>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span id="matcher-char-count" style="font-size: 10px; color: #9ca3af;">0 / 300</span>
-          <button class="copy-btn" id="matcher-copy-btn">📋 Copy Note</button>
-        </div>
       </div>
     </div>
 
-    <!-- Tab: Templates -->
-    <div class="tab-content" id="tab-templates">
-      <div id="templates-list-container" style="margin-bottom: 14px;">
-        <!-- Populated by JS -->
-      </div>
-
-      <div style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 12px;">
-        <div style="font-weight: 700; font-size: 12px; color: #60a5fa; margin-bottom: 8px;">➕ Add / Edit Template</div>
-        <div class="form-group">
-          <label class="form-label">Template Title</label>
-          <input type="text" class="form-input" id="tmpl-title" placeholder="e.g. Direct Tech Pitch">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Persona</label>
-          <select class="form-input" id="tmpl-persona">
-            <option value="Recruiter / Talent Partner">Recruiter / Talent Partner</option>
-            <option value="Hiring Manager / Tech Lead">Hiring Manager / Tech Lead</option>
-            <option value="Peer / Potential Referral">Peer / Potential Referral</option>
-            <option value="Other / General">Other / General</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Template Text (&lt;300 chars)</label>
-          <textarea class="form-textarea" id="tmpl-text" style="height: 75px;" placeholder="Hi {first_name}, noticed you hire for tech at {company}. I'm a {my_role} in {top_skill}..."></textarea>
-          <div style="font-size: 10px; color: #9ca3af; margin-top: 2px;">
-            Variables: <code>{first_name}</code>, <code>{company}</code>, <code>{my_role}</code>, <code>{top_skill}</code>, <code>{second_skill}</code>
-          </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 6px; margin: 6px 0 10px 0;">
-          <input type="checkbox" id="tmpl-is-default">
-          <label for="tmpl-is-default" style="font-size: 11px; color: #d1d5db;">Set as Default for this Persona</label>
-        </div>
-        <button class="save-btn" id="save-template-btn">Save Template to DuckDB</button>
-        <div id="template-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
-      </div>
-    </div>
-
-    <!-- Tab 2: My Resume -->
-    <div class="tab-content" id="tab-targets">
-      <!-- Upload Resume PDF Section -->
-      <div class="dropzone" id="resume-pdf-dropzone" style="margin-bottom: 12px;">
-        <input type="file" id="resume-pdf-input" accept=".pdf" style="display: none;">
-        <div style="font-size: 22px; margin-bottom: 2px;">📄</div>
-        <div style="font-weight: 600; font-size: 12px; color: #60a5fa;">Upload Resume PDF</div>
-        <div style="font-size: 11px; color: #9ca3af;">Click or drag &amp; drop your resume PDF</div>
-        <div id="resume-upload-status" style="font-size: 11px; color: #34d399; margin-top: 4px; font-weight: 600;"></div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Or Paste / Edit Your Resume Text</label>
-        <textarea class="form-textarea" id="cfg-resume" style="height: 130px; font-family: monospace; font-size: 11px;" placeholder="Paste your full resume text here (experience, skills, summary)... Laya will compare profiles directly against this resume!"></textarea>
-      </div>
-      <button class="save-btn" id="save-targets-btn">Save &amp; Analyze Resume</button>
-      <div id="targets-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
-
-      <div id="resume-analysis-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-top: 12px;">
-        <div style="font-weight: 700; font-size: 11px; color: #60a5fa; text-transform: uppercase;">✨ Auto-Detected From Resume</div>
-        <div style="font-size: 12px; margin-top: 4px;">Role: <strong id="detected-role" style="color: #34d399;">Software Engineer</strong></div>
-        <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Skills: <span id="detected-skills">Python, Cloud</span></div>
-      </div>
-    </div>
-
-    <!-- Tab 3: Cleanup Rules -->
-    <div class="tab-content" id="tab-cleanup">
-      <div class="form-group">
-        <label class="form-label">Spam / Blacklist Keywords (comma-separated)</label>
-        <textarea class="form-textarea" id="cfg-blacklist" style="height: 110px;" placeholder="Crypto, Forex, Lead Gen, Financial Advisor, Dropshipping, SEO Specialist"></textarea>
-      </div>
-      <p style="font-size: 11px; color: #9ca3af; line-height: 1.4; margin: 0 0 10px 0;">
-        Profiles matching any of these keywords will be flagged on your LinkedIn Connections page so you can safely unfollow or disconnect.
-      </p>
-      <button class="save-btn" id="save-cleanup-btn">Save Blacklist Rules</button>
-      <div id="cleanup-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
-    </div>
-
-    <!-- Tab 4: History -->
+    <!-- Tab 2: Sent Invites History -->
     <div class="tab-content" id="tab-history">
-      <div id="history-list">
-        <div style="font-size: 12px; color: #9ca3af; text-align: center; padding: 20px 0;">
-          No evaluated profiles yet. Browse LinkedIn profiles to begin!
-        </div>
+      <div class="history-controls" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 11px; color: #9ca3af;">Recent Connected Contacts</span>
+        <button id="refresh-history-btn" style="background: transparent; border: none; color: #60a5fa; cursor: pointer; font-size: 11px;">🔄 Refresh</button>
+      </div>
+      <div id="history-list-container" style="max-height: 380px; overflow-y: auto;">
+        <!-- Populated dynamically -->
       </div>
     </div>
   </div>
-
   <script src="popup.js"></script>
 </body>
 </html>

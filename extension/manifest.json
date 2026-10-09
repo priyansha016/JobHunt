@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LinkedIn JobHunt Profiler & Cleanup (DuckDB + Laya)",
-  "version": "1.0.0",
-  "description": "AI-powered LinkedIn profile matcher, personalized connection note generator, and network cleanup manager using Laya and DuckDB.",
+  "name": "LinkedIn Network Booster (Laya Auto-Pilot)",
+  "version": "1.1.0",
+  "description": "Autonomous LinkedIn network expansion and connection booster powered by Laya System 1 Decisions and DuckDB.",
   "permissions": [
     "storage",
     "activeTab",
@@ -27,12 +27,10 @@
       ],
       "js": [
         "content/profiler.js",
-        "content/cleanup.js",
         "content/search_automation.js"
       ],
       "css": [
         "content/profiler.css",
-        "content/cleanup.css",
         "content/search_automation.css"
       ],
       "run_at": "document_idle"
