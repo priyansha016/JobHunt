@@ -7,6 +7,8 @@ document.addEventListener("DOMContentLoaded", () => {
   loadConfig();
   loadTemplates();
   loadHistory();
+  setupResumePdfUpload();
+  setupDirectMatcher();
 
   document.getElementById("save-targets-btn").addEventListener("click", saveTargets);
   document.getElementById("save-cleanup-btn").addEventListener("click", saveBlacklist);
@@ -273,3 +275,257 @@ function parseCsv(str) {
     .map(s => s.trim())
     .filter(s => s.length > 0);
 }
+
+function setupResumePdfUpload() {
+  const dropzone = document.getElementById("resume-pdf-dropzone");
+  const fileInput = document.getElementById("resume-pdf-input");
+  const statusEl = document.getElementById("resume-upload-status");
+  if (!dropzone || !fileInput) return;
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+
+  dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleResumeFileUpload(e.dataTransfer.files[0]);
+    }
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files && fileInput.files.length > 0) {
+      handleResumeFileUpload(fileInput.files[0]);
+    }
+  });
+
+  async function handleResumeFileUpload(file) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      statusEl.style.color = "#f87171";
+      statusEl.innerText = "Please select a .pdf file.";
+      return;
+    }
+
+    statusEl.style.color = "#60a5fa";
+    statusEl.innerText = `Uploading and parsing ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/resume/upload-pdf`, {
+        method: "POST",
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to parse PDF");
+      }
+
+      const data = await res.json();
+      document.getElementById("cfg-resume").value = data.extracted_text;
+      document.getElementById("detected-role").innerText = data.detected_role || "Software Engineer";
+      document.getElementById("detected-skills").innerText = (data.detected_skills || []).join(", ") || "General Tech Stack";
+
+      statusEl.style.color = "#34d399";
+      statusEl.innerText = `✓ Loaded ${file.name} (${data.char_count} chars). Saved to DuckDB!`;
+      setTimeout(() => { statusEl.innerText = ""; }, 4000);
+    } catch (e) {
+      statusEl.style.color = "#f87171";
+      statusEl.innerText = `Error: ${e.message}`;
+    }
+  }
+}
+
+function setupDirectMatcher() {
+  let activeMode = "pdf";
+  const btnPdf = document.getElementById("btn-mode-pdf");
+  const btnText = document.getElementById("btn-mode-text");
+  const containerPdf = document.getElementById("matcher-pdf-container");
+  const containerText = document.getElementById("matcher-text-container");
+  const dropzone = document.getElementById("matcher-pdf-dropzone");
+  const fileInput = document.getElementById("matcher-pdf-input");
+  const fileNameEl = document.getElementById("matcher-file-name");
+  const textInput = document.getElementById("matcher-text-input");
+  const runBtn = document.getElementById("run-match-btn");
+  const feedbackEl = document.getElementById("matcher-feedback");
+  const resultCard = document.getElementById("matcher-result-card");
+  const noteTextarea = document.getElementById("matcher-res-note");
+  const charCountEl = document.getElementById("matcher-char-count");
+  const copyBtn = document.getElementById("matcher-copy-btn");
+
+  if (!btnPdf || !runBtn) return;
+
+  let selectedPdfFile = null;
+
+  btnPdf.addEventListener("click", () => {
+    activeMode = "pdf";
+    btnPdf.classList.add("active");
+    btnText.classList.remove("active");
+    containerPdf.style.display = "block";
+    containerText.style.display = "none";
+  });
+
+  btnText.addEventListener("click", () => {
+    activeMode = "text";
+    btnText.classList.add("active");
+    btnPdf.classList.remove("active");
+    containerText.style.display = "block";
+    containerPdf.style.display = "none";
+  });
+
+  dropzone.addEventListener("click", () => fileInput.click());
+
+  dropzone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  });
+
+  dropzone.addEventListener("dragleave", () => {
+    dropzone.classList.remove("dragover");
+  });
+
+  dropzone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      selectedPdfFile = e.dataTransfer.files[0];
+      fileNameEl.innerText = `Selected: ${selectedPdfFile.name}`;
+    }
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files && fileInput.files.length > 0) {
+      selectedPdfFile = fileInput.files[0];
+      fileNameEl.innerText = `Selected: ${selectedPdfFile.name}`;
+    }
+  });
+
+  noteTextarea.addEventListener("input", () => {
+    const len = noteTextarea.value.length;
+    charCountEl.innerText = `${len} / 300`;
+    charCountEl.style.color = len > 300 ? "#f87171" : "#9ca3af";
+  });
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(noteTextarea.value);
+      const originalText = copyBtn.innerText;
+      copyBtn.innerText = "✓ Copied!";
+      copyBtn.style.background = "#059669";
+      setTimeout(() => {
+        copyBtn.innerText = originalText;
+        copyBtn.style.background = "#374151";
+      }, 2000);
+    } catch {
+      noteTextarea.select();
+      document.execCommand("copy");
+    }
+  });
+
+  runBtn.addEventListener("click", async () => {
+    feedbackEl.innerText = "";
+    resultCard.style.display = "none";
+
+    if (activeMode === "pdf") {
+      if (!selectedPdfFile) {
+        feedbackEl.style.color = "#f87171";
+        feedbackEl.innerText = "Please select or drop a profile PDF file first.";
+        return;
+      }
+      runBtn.disabled = true;
+      runBtn.innerText = "Running Laya Evaluation...";
+
+      try {
+        const formData = new FormData();
+        formData.append("file", selectedPdfFile);
+        formData.append("save_to_db", "true");
+
+        const res = await fetch(`${BACKEND_URL}/api/profile/match-pdf`, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Evaluation failed");
+        }
+
+        const data = await res.json();
+        renderMatchResult(data);
+      } catch (err) {
+        feedbackEl.style.color = "#f87171";
+        feedbackEl.innerText = `Error: ${err.message}`;
+      } finally {
+        runBtn.disabled = false;
+        runBtn.innerText = "Run Laya Match";
+      }
+    } else {
+      const rawText = textInput.value.trim();
+      if (!rawText) {
+        feedbackEl.style.color = "#f87171";
+        feedbackEl.innerText = "Please paste candidate/profile text to compare.";
+        return;
+      }
+      runBtn.disabled = true;
+      runBtn.innerText = "Running Laya Evaluation...";
+
+      try {
+        const res = await fetch(`${BACKEND_URL}/api/profile/match-text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            raw_text: rawText,
+            save_to_db: true
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "Evaluation failed");
+        }
+
+        const data = await res.json();
+        renderMatchResult(data);
+      } catch (err) {
+        feedbackEl.style.color = "#f87171";
+        feedbackEl.innerText = `Error: ${err.message}`;
+      } finally {
+        runBtn.disabled = false;
+        runBtn.innerText = "Run Laya Match";
+      }
+    }
+  });
+
+  function renderMatchResult(data) {
+    resultCard.style.display = "block";
+    const profile = data.profile || {};
+    const evaluation = data.evaluation || {};
+    const score = Math.round(evaluation.match_score || 0);
+
+    document.getElementById("matcher-res-name").innerText = profile.name || "Candidate";
+    document.getElementById("matcher-res-score").innerText = `${score}% Match`;
+    document.getElementById("matcher-res-score").style.color = score >= 70 ? "#34d399" : score >= 50 ? "#fbbf24" : "#9ca3af";
+
+    const personaEl = document.getElementById("matcher-res-persona");
+    personaEl.innerText = evaluation.persona || "Professional";
+
+    const headlineText = (profile.headline || "") + (profile.current_company ? ` at ${profile.current_company}` : "");
+    document.getElementById("matcher-res-headline").innerText = headlineText || "No headline provided";
+
+    const note = data.suggested_note || "";
+    noteTextarea.value = note;
+    charCountEl.innerText = `${note.length} / 300`;
+    charCountEl.style.color = note.length > 300 ? "#f87171" : "#9ca3af";
+  }
+}
+

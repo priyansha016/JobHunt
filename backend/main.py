@@ -3,16 +3,19 @@ FastAPI Server for LinkedIn Profiler, Connection Booster & Cleanup System.
 Powered by Laya (System 1 Decision Engine), DuckDB, and Customizable Message Templates.
 """
 
-from fastapi import FastAPI, HTTPException
+import re
+import time
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
 from backend.database import db
-from backend.engine.laya_engine import engine
+from backend.engine.laya_engine import engine, extract_resume_profile
 from backend.engine.note_generator import generate_connection_note, fill_template
+from backend.utils.pdf_parser import extract_text_from_pdf, parse_profile_from_text, is_valid_pdf
 
-app = FastAPI(title="LinkedIn JobHunt Profiler & Cleanup API", version="1.1.0")
+app = FastAPI(title="LinkedIn JobHunt Profiler & Cleanup API", version="1.2.0")
 
 # Enable CORS for Chrome Extension & local dev
 app.add_middleware(
@@ -53,6 +56,17 @@ class TemplatePayload(BaseModel):
 class TemplateRenderPayload(BaseModel):
     template_text: str
     profile: ProfilePayload
+
+
+class TextMatchPayload(BaseModel):
+    raw_text: str
+    name: Optional[str] = None
+    headline: Optional[str] = None
+    current_company: Optional[str] = None
+    location: Optional[str] = None
+    about: Optional[str] = None
+    template_id: Optional[str] = None
+    save_to_db: Optional[bool] = True
 
 
 class StatusUpdate(BaseModel):
@@ -101,6 +115,37 @@ def update_config(payload: UserConfigUpdate):
         skills=payload.skills,
         cleanup_blacklist=payload.cleanup_blacklist
     )
+
+
+@app.post("/api/resume/upload-pdf")
+async def upload_resume_pdf(file: UploadFile = File(...)):
+    """
+    Upload a resume PDF file. Automatically extracts text, identifies
+    primary role and skills, and stores the configuration in DuckDB.
+    """
+    content = await file.read()
+    if not is_valid_pdf(content):
+        raise HTTPException(status_code=400, detail="Invalid PDF format. Please upload a valid .pdf file.")
+
+    extracted_text = extract_text_from_pdf(content)
+    if not extracted_text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract text from PDF. Document might be scanned or empty.")
+
+    parsed_info = extract_resume_profile(extracted_text)
+    updated_config = db.update_user_config(
+        resume_text=extracted_text,
+        skills=parsed_info.get("skills", [])
+    )
+
+    return {
+        "success": True,
+        "filename": file.filename,
+        "extracted_text": extracted_text,
+        "detected_role": parsed_info.get("primary_role"),
+        "detected_skills": parsed_info.get("skills", []),
+        "char_count": len(extracted_text),
+        "config": updated_config
+    }
 
 
 # --- Template Management Endpoints ---
@@ -188,6 +233,160 @@ def evaluate_profile(payload: ProfilePayload):
         "evaluation": eval_result,
         "suggested_note": note,
         "available_templates": available_templates
+    }
+
+
+@app.post("/api/profile/match-pdf")
+async def match_profile_pdf(
+    file: UploadFile = File(...),
+    template_id: Optional[str] = Form(None),
+    save_to_db: Optional[bool] = Form(True)
+):
+    """
+    Match a candidate or LinkedIn Profile PDF against the user's resume using Laya.
+    Extracts text, parses candidate details, evaluates fit, and generates a pitch note <= 300 chars.
+    """
+    content = await file.read()
+    if not is_valid_pdf(content):
+        raise HTTPException(status_code=400, detail="Invalid PDF format. Please upload a valid .pdf file.")
+
+    extracted_text = extract_text_from_pdf(content)
+    if not extracted_text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract text from the profile PDF.")
+
+    parsed_profile = parse_profile_from_text(extracted_text)
+    user_config = db.get_user_config()
+
+    eval_result = engine.evaluate_profile(parsed_profile, user_config)
+    persona = eval_result["persona"]
+    match_score = eval_result["match_score"]
+    rationale = eval_result["rationale"]
+
+    chosen_template_text = None
+    if template_id:
+        tmpl = db.get_template(template_id)
+        if tmpl:
+            chosen_template_text = tmpl["template_text"]
+    if not chosen_template_text:
+        default_tmpl = db.get_default_template_for_persona(persona)
+        if default_tmpl:
+            chosen_template_text = default_tmpl["template_text"]
+
+    note = generate_connection_note(parsed_profile, persona, user_config, template_text=chosen_template_text)
+    available_templates = db.list_templates(persona=persona) or db.list_templates()
+
+    saved_record = None
+    if save_to_db:
+        clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', parsed_profile['name'])
+        profile_id = f"pdf_{clean_name}_{int(time.time())}"
+        record = {
+            "profile_id": profile_id,
+            "linkedin_url": f"pdf://{file.filename}",
+            "name": parsed_profile["name"],
+            "headline": parsed_profile["headline"],
+            "current_company": parsed_profile["current_company"],
+            "location": parsed_profile["location"],
+            "about": parsed_profile["about"][:500],
+            "persona": persona,
+            "match_score": match_score,
+            "rationale": rationale,
+            "suggested_note": note,
+            "note_status": "draft"
+        }
+        saved_record = db.save_evaluated_profile(record)
+
+    return {
+        "source": "pdf",
+        "filename": file.filename,
+        "profile": parsed_profile,
+        "evaluation": eval_result,
+        "suggested_note": note,
+        "available_templates": available_templates,
+        "saved_record": saved_record
+    }
+
+
+@app.post("/api/profile/match-text")
+def match_profile_text(payload: TextMatchPayload):
+    """
+    Directly match raw candidate or profile text against the user's resume using Laya.
+    Parses unstructured text, predicts persona & fit, and formats an outreach note <= 300 chars.
+    """
+    if not payload.raw_text.strip():
+        raise HTTPException(status_code=400, detail="Profile text cannot be empty.")
+
+    parsed = parse_profile_from_text(payload.raw_text)
+    profile_dict = {
+        "name": payload.name or parsed["name"],
+        "headline": payload.headline or parsed["headline"],
+        "current_company": payload.current_company or parsed["current_company"],
+        "location": payload.location or parsed["location"],
+        "about": payload.about or parsed["about"],
+        "raw_text": payload.raw_text
+    }
+
+    user_config = db.get_user_config()
+    eval_result = engine.evaluate_profile(profile_dict, user_config)
+    persona = eval_result["persona"]
+    match_score = eval_result["match_score"]
+    rationale = eval_result["rationale"]
+
+    chosen_template_text = None
+    if payload.template_id:
+        tmpl = db.get_template(payload.template_id)
+        if tmpl:
+            chosen_template_text = tmpl["template_text"]
+    if not chosen_template_text:
+        default_tmpl = db.get_default_template_for_persona(persona)
+        if default_tmpl:
+            chosen_template_text = default_tmpl["template_text"]
+
+    note = generate_connection_note(profile_dict, persona, user_config, template_text=chosen_template_text)
+    available_templates = db.list_templates(persona=persona) or db.list_templates()
+
+    saved_record = None
+    if payload.save_to_db:
+        clean_name = re.sub(r'[^a-zA-Z0-9_]', '_', profile_dict['name'])
+        profile_id = f"text_{clean_name}_{int(time.time())}"
+        record = {
+            "profile_id": profile_id,
+            "linkedin_url": "manual://text-input",
+            "name": profile_dict["name"],
+            "headline": profile_dict["headline"],
+            "current_company": profile_dict["current_company"],
+            "location": profile_dict["location"],
+            "about": profile_dict["about"][:500],
+            "persona": persona,
+            "match_score": match_score,
+            "rationale": rationale,
+            "suggested_note": note,
+            "note_status": "draft"
+        }
+        saved_record = db.save_evaluated_profile(record)
+
+    return {
+        "source": "text",
+        "profile": profile_dict,
+        "evaluation": eval_result,
+        "suggested_note": note,
+        "available_templates": available_templates,
+        "saved_record": saved_record
+    }
+
+
+@app.post("/api/pdf/extract-text")
+async def extract_pdf_endpoint(file: UploadFile = File(...)):
+    """
+    Utility endpoint to extract plain text from any uploaded PDF file.
+    """
+    content = await file.read()
+    if not is_valid_pdf(content):
+        raise HTTPException(status_code=400, detail="Invalid PDF file.")
+    text = extract_text_from_pdf(content)
+    return {
+        "filename": file.filename,
+        "text": text,
+        "char_count": len(text)
     }
 
 

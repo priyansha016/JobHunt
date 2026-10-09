@@ -20,8 +20,9 @@
     <!-- Navigation Tabs -->
     <div class="popup-tabs">
       <button class="tab-btn active" data-tab="metrics">Metrics</button>
+      <button class="tab-btn" data-tab="matcher">Matcher</button>
       <button class="tab-btn" data-tab="templates">Templates</button>
-      <button class="tab-btn" data-tab="targets">Goals</button>
+      <button class="tab-btn" data-tab="targets">Resume</button>
       <button class="tab-btn" data-tab="cleanup">Cleanup</button>
       <button class="tab-btn" data-tab="history">History</button>
     </div>
@@ -57,6 +58,58 @@
 
       <div style="font-size: 11px; color: #9ca3af; text-align: center; margin-top: 8px;">
         Data persisted in <code>data/jobhunt.duckdb</code>
+      </div>
+    </div>
+
+    <!-- Tab: Direct Profile Matcher (PDF or Text) -->
+    <div class="tab-content" id="tab-matcher">
+      <div style="font-size: 12px; color: #94a3b8; margin-bottom: 10px;">
+        Compare any LinkedIn profile or candidate CV directly with your resume using Laya. Supports <strong>PDF upload</strong> or <strong>pasted text</strong>.
+      </div>
+
+      <!-- Mode Selector -->
+      <div class="sub-tab-group" style="display: flex; gap: 8px; margin-bottom: 10px;">
+        <button class="sub-tab-btn active" id="btn-mode-pdf">📄 Upload PDF</button>
+        <button class="sub-tab-btn" id="btn-mode-text">📝 Paste Text</button>
+      </div>
+
+      <!-- PDF Mode Container -->
+      <div id="matcher-pdf-container">
+        <div class="dropzone" id="matcher-pdf-dropzone">
+          <input type="file" id="matcher-pdf-input" accept=".pdf" style="display: none;">
+          <div style="font-size: 24px; margin-bottom: 4px;">📂</div>
+          <div style="font-weight: 600; font-size: 12px; color: #60a5fa;">Choose LinkedIn Profile or CV PDF</div>
+          <div style="font-size: 11px; color: #9ca3af; margin-top: 2px;">Supports LinkedIn 'Save to PDF' &amp; resumes</div>
+          <div id="matcher-file-name" style="font-size: 11px; color: #34d399; margin-top: 6px; font-weight: 600;"></div>
+        </div>
+      </div>
+
+      <!-- Text Mode Container -->
+      <div id="matcher-text-container" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Candidate Profile / Headline / Summary</label>
+          <textarea class="form-textarea" id="matcher-text-input" style="height: 110px;" placeholder="Paste LinkedIn profile info, headline, experience or bio text here..."></textarea>
+        </div>
+      </div>
+
+      <button class="save-btn" id="run-match-btn" style="margin-top: 10px;">Run Laya Match</button>
+      <div id="matcher-feedback" style="font-size: 11px; color: #60a5fa; margin-top: 6px; text-align: center;"></div>
+
+      <!-- Result Card -->
+      <div id="matcher-result-card" style="display: none; background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 12px; margin-top: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <div id="matcher-res-name" style="font-weight: 700; font-size: 13px; color: #f3f4f6;">Candidate Name</div>
+          <div id="matcher-res-score" style="font-weight: 800; font-size: 13px; color: #10b981;">88% Match</div>
+        </div>
+        <div id="matcher-res-persona" class="persona-badge" style="display: inline-block; margin-bottom: 6px;">Recruiter</div>
+        <div id="matcher-res-headline" style="font-size: 11px; color: #9ca3af; margin-bottom: 8px;">Headline at Company</div>
+        
+        <div style="font-size: 11px; font-weight: 600; color: #60a5fa; margin-bottom: 4px;">Tailored Connection Note (&le;300 chars):</div>
+        <textarea class="form-textarea" id="matcher-res-note" style="height: 65px; font-size: 11px; margin-bottom: 6px;"></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span id="matcher-char-count" style="font-size: 10px; color: #9ca3af;">0 / 300</span>
+          <button class="copy-btn" id="matcher-copy-btn">📋 Copy Note</button>
+        </div>
       </div>
     </div>
 
@@ -99,11 +152,20 @@
 
     <!-- Tab 2: My Resume -->
     <div class="tab-content" id="tab-targets">
-      <div class="form-group">
-        <label class="form-label">Paste Your Resume / Bio</label>
-        <textarea class="form-textarea" id="cfg-resume" style="height: 150px; font-family: monospace; font-size: 11px;" placeholder="Paste your full resume text here (experience, skills, summary)... Laya will compare profiles directly against this resume!"></textarea>
+      <!-- Upload Resume PDF Section -->
+      <div class="dropzone" id="resume-pdf-dropzone" style="margin-bottom: 12px;">
+        <input type="file" id="resume-pdf-input" accept=".pdf" style="display: none;">
+        <div style="font-size: 22px; margin-bottom: 2px;">📄</div>
+        <div style="font-weight: 600; font-size: 12px; color: #60a5fa;">Upload Resume PDF</div>
+        <div style="font-size: 11px; color: #9ca3af;">Click or drag &amp; drop your resume PDF</div>
+        <div id="resume-upload-status" style="font-size: 11px; color: #34d399; margin-top: 4px; font-weight: 600;"></div>
       </div>
-      <button class="save-btn" id="save-targets-btn">Save & Analyze Resume</button>
+
+      <div class="form-group">
+        <label class="form-label">Or Paste / Edit Your Resume Text</label>
+        <textarea class="form-textarea" id="cfg-resume" style="height: 130px; font-family: monospace; font-size: 11px;" placeholder="Paste your full resume text here (experience, skills, summary)... Laya will compare profiles directly against this resume!"></textarea>
+      </div>
+      <button class="save-btn" id="save-targets-btn">Save &amp; Analyze Resume</button>
       <div id="targets-feedback" style="font-size: 11px; color: #34d399; margin-top: 4px; text-align: center;"></div>
 
       <div id="resume-analysis-card" style="background: #1f2937; border: 1px solid #374151; border-radius: 8px; padding: 10px; margin-top: 12px;">

@@ -13,33 +13,32 @@ import threading
 from typing import Dict, Any, List, Tuple
 
 _LAYA_AGENT = None
-_LAYA_LOADING = False
+_LOADER_THREAD = None
 _LOCK = threading.Lock()
 
 
 def _ensure_laya_loaded():
-    global _LAYA_AGENT, _LAYA_LOADING
-    if _LAYA_AGENT is not None or _LAYA_LOADING:
+    global _LAYA_AGENT, _LOADER_THREAD
+    if _LAYA_AGENT is not None:
         return
 
-    def _loader():
-        global _LAYA_AGENT, _LAYA_LOADING
-        with _LOCK:
-            _LAYA_LOADING = True
-        try:
-            import laya
-            agent = laya.load("typed-decisions")
-            with _LOCK:
-                _LAYA_AGENT = agent
-                _LAYA_LOADING = False
-            print("[LayaEngine] Laya agent loaded successfully.")
-        except Exception as e:
-            with _LOCK:
-                _LAYA_LOADING = False
-            print(f"[LayaEngine] Laya agent background load note: {e}")
+    with _LOCK:
+        if _LOADER_THREAD is not None and _LOADER_THREAD.is_alive():
+            return
 
-    thread = threading.Thread(target=_loader, daemon=True)
-    thread.start()
+        def _loader():
+            global _LAYA_AGENT
+            try:
+                import laya
+                agent = laya.load("typed-decisions")
+                with _LOCK:
+                    _LAYA_AGENT = agent
+                print("[LayaEngine] Laya agent loaded successfully.")
+            except Exception as e:
+                print(f"[LayaEngine] Laya agent background load note: {e}")
+
+        _LOADER_THREAD = threading.Thread(target=_loader, daemon=True)
+        _LOADER_THREAD.start()
 
 
 # Common tech titles and skills dictionary for quick resume extraction
@@ -105,13 +104,21 @@ class LayaEngine:
         return _LAYA_AGENT is not None
 
     def get_agent(self):
-        global _LAYA_AGENT
+        global _LAYA_AGENT, _LOADER_THREAD
+        if _LAYA_AGENT is not None:
+            return _LAYA_AGENT
+
+        if _LOADER_THREAD is not None and _LOADER_THREAD.is_alive():
+            _LOADER_THREAD.join(timeout=10)
+
         if _LAYA_AGENT is None:
-            try:
-                import laya
-                _LAYA_AGENT = laya.load("typed-decisions")
-            except Exception as e:
-                print(f"[LayaEngine] get_agent error: {e}")
+            with _LOCK:
+                if _LAYA_AGENT is None:
+                    try:
+                        import laya
+                        _LAYA_AGENT = laya.load("typed-decisions")
+                    except Exception as e:
+                        print(f"[LayaEngine] get_agent error: {e}")
         return _LAYA_AGENT
 
     def classify_persona(self, headline: str, about: str, company: str) -> str:
@@ -124,12 +131,18 @@ class LayaEngine:
             return "Peer / Potential Referral"
         return "Other / General"
 
-    def evaluate_profile(self, profile: Dict[str, Any], user_config: Dict[str, Any]) -> Dict[str, Any]:
+    def evaluate_profile(self, profile: Dict[str, Any], user_config: Any) -> Dict[str, Any]:
         """
         Directly compares candidate's Resume against LinkedIn profile.
         Uses Laya for System 1 Persona, Relevance, and Fit Level.
+        user_config can be a Dict containing 'resume_text' or the raw resume text string.
         """
-        resume_text = (user_config.get("resume_text") or "").strip()
+        if isinstance(user_config, str):
+            resume_text = user_config.strip()
+        elif isinstance(user_config, dict):
+            resume_text = (user_config.get("resume_text") or "").strip()
+        else:
+            resume_text = ""
         resume_info = extract_resume_profile(resume_text)
 
         headline = profile.get("headline", "")
