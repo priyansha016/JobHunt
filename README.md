@@ -28,13 +28,20 @@ Local Backend (http://127.0.0.1:8765)
 ## Quick Start Guide
 
 ### 1. Start the Local Backend
-The backend server is already running, but you can launch or restart it anytime:
+The project uses **uv** for fast, reproducible dependency management and environment execution.
+
+Start the backend anytime:
 ```bash
 ./start.sh
 ```
-Or directly:
+Or directly with `uv`:
 ```bash
-./venv/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port 8765 --reload
+uv run uvicorn backend.main:app --host 127.0.0.1 --port 8765 --reload
+```
+
+Run test suite:
+```bash
+uv run python -m unittest discover -s backend/tests
 ```
 
 Health check: [http://127.0.0.1:8765/api/health](http://127.0.0.1:8765/api/health)
